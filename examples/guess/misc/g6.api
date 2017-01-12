@@ -1,0 +1,11 @@
+symbols g/2, h/2, OK/0;
+
+private r, r1, r2;
+weaknames g1, g2;
+channels C;
+var Z1, Z2, X;
+
+t = in(C,Z2).out(C,h(g(g(Z2,r),r),r2)).out(C,g(g(Z2,r),r)).out(C,g(OK,r)).in(C,Z1).out(C,h(g(Z1,r),r1)).out(C,g(Z1,r)).in(C,X).out(C,h(g1,h(X,r1))).out(C,h(g2,h(X,r2))).guess(g1).guess(g2).0;
+
+guessreachable? t;
+

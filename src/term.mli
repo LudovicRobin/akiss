@@ -23,6 +23,7 @@ exception Invalid_term
 val vars : string list ref
 val channels : string list ref
 val fsymbols : (string * int) list ref
+val weaknames : string list ref
 val private_names : string list ref
 
 type id = string
@@ -53,7 +54,9 @@ val show_subst : subst -> string
 val show_subst_list : subst list -> string
 val show_variant_list: (term * subst) list -> string
 
+val is_guess_in_term : term -> bool
 val apply_subst : term -> subst -> term
+val apply_subst_until_fix_point : term -> subst -> term
 val bound : varName -> subst -> bool
 
 val compose : subst -> subst -> subst

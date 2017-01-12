@@ -45,16 +45,19 @@ rule token = parse
     | "channels" { Channels }
     | "evchannels" { EvChannels }
     | "privchannels" { PrivChannels }
+    | "weaknames" { WeakNames } 
     | "::" { InnerSequence }
     | "||" { InnerInterleave }
     | "++" { InnerChoice }
     | ">>" { InnerPhase }
     | "print_traces" { PrintTraces }
     | "print" { Print }
+    | "guess_print" { GuessPrint }
     | "equivalentft?" { Square }
     | "includedft?" { Incft }
     | "includedct?" { Incct }
     | "fwdequivalentft?" { EvSquare }
+    | "guessreachable?" { GuessReach }
     | "var" { Var }
     | "equivalentct?" { Equivalent }
     | "not" { Not }
@@ -75,6 +78,8 @@ rule token = parse
     | "=" { Equals }
     | "out" { Out }
     | "in" { In }
+    | "guess" { Guess }
+    | "event" { Ev }
     | "[" { LeftB }
     | "]" { RightB }
     | "(" { LeftP }

@@ -28,11 +28,13 @@ open Ast
 %token XOR AC
 %token Symbols Private Var Rewrite EvRewrite Channels EvChannels Let
 %token PrivChannels
+%token WeakNames
 %token LeftP RightP LeftB RightB
 %token Arrow Equals Dot Slash Comma Semicolon
-%token Out In And Zero Plus
-%token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct
-%token Print PrintTraces
+%token Out In And Zero Plus Guess
+%token Ev
+%token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct GuessReach
+%token Print PrintTraces GuessPrint
 %token InnerSequence InnerInterleave InnerChoice InnerPhase
 %token EOF
 
@@ -64,11 +66,13 @@ main:
  | Channels namelist { DeclChannels $2 }
  | EvChannels namelist { DeclEvChannels $2 }
  | PrivChannels namelist { DeclPrivChannels $2 }
+ | WeakNames namelist { DeclWeakNames $2 } 
  | Var namelist { DeclVar $2 }
  | Rewrite term Arrow term { DeclRewrite ($2, $4) }
  | EvRewrite term Arrow term { DeclEvRewrite ($2, $4) }
  | Identifier Equals process { DeclProcess ($1, $3) }
  | Print Identifier { QueryPrint $2 }
+ | GuessPrint Identifier { QueryGuessPrint $2 }
  | PrintTraces identifierList { QueryPrintTraces $2 }
  | Variants term { QueryVariants $2 }
  | Unifiers term term { QueryUnifiers ($2, $3) }
@@ -80,6 +84,7 @@ main:
  | Equivalent identifierList And identifierList { NegEquivalent ($2, $4) }
  | Square identifierList And identifierList { NegSquare ($2, $4) }
  | EvSquare identifierList And identifierList { NegEvSquare ($2, $4) }
+ | GuessReach identifierList { NegGuessReach ($2) }
  | Incft identifierList In identifierList { NegIncFt ($2, $4) }
  | Incct identifierList In identifierList { NegIncCt ($2, $4) }
 
@@ -107,6 +112,8 @@ main:
  | In LeftP Identifier Comma Identifier RightP { TempActionIn($3, $5) }
  | Out LeftP Identifier Comma term RightP { TempActionOut($3, $5) }
  | LeftB term Equals term RightB { TempActionTest ($2, $4) }
+ | Guess LeftP term RightP { TempActionGuess($3) } 
+ | Ev { TempActionEvent }
 
      term:
  | Identifier { TempTermCons ($1, []) }

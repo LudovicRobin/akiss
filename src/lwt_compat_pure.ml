@@ -28,5 +28,10 @@ end
 
 module Lwt_list = struct
   let rev_map_p = List.rev_map
+  let exists_p = List.exists
   let filter_p = List.filter
+end
+
+module Lwt_main = struct 
+  let run x = x
 end

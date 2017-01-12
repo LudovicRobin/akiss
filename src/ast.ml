@@ -24,6 +24,8 @@ type tempAction =
   | TempActionIn of string * string
   | TempActionOut of string * tempTerm
   | TempActionTest of tempTerm * tempTerm
+  | TempActionGuess of tempTerm
+  | TempActionEvent 
 
 type tempProcess =
   | TempSequence of tempProcess * tempProcess
@@ -39,6 +41,7 @@ type negatable_cmd =
   | NegEquivalent of (string list) * (string list)
   | NegSquare of (string list) * (string list)
   | NegEvSquare of (string list) * (string list)
+  | NegGuessReach of (string list)
   | NegIncFt of (string list) * (string list)
   | NegIncCt of (string list) * (string list)
 
@@ -50,6 +53,7 @@ type cmd =
   | DeclChannels of string list
   | DeclEvChannels of string list
   | DeclPrivChannels of string list
+  | DeclWeakNames of string list
   | DeclVar of string list
   | DeclRewrite of tempTerm * tempTerm
   | DeclEvRewrite of tempTerm * tempTerm
@@ -57,6 +61,7 @@ type cmd =
   | QueryNegatable of bool * negatable_cmd
   | QueryPrint of string
   | QueryPrintTraces of string list
+  | QueryGuessPrint of string
   | QueryVariants of tempTerm
   | QueryUnifiers of tempTerm * tempTerm
   | QueryNormalize of tempTerm

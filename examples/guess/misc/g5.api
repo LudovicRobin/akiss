@@ -1,0 +1,13 @@
+symbols enc/2, dec/2, h/1;
+
+private k;
+weaknames g;
+channels C;
+var X, Y;
+
+rewrite dec(enc(X, Y), Y) -> X;
+rewrite enc(dec(X, Y), Y) -> X;
+
+r = out(C,enc(g,k)).in(C,X).out(C,dec(X,k)).guess(g).0;
+
+guessreachable? r;

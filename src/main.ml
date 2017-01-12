@@ -68,6 +68,25 @@ let tests_of_trace show_progress t rew =
      return y
   | None -> failwith "fatal error in tests_of_trace"
 
+let gtests_of_trace_job t rew =
+  verboseOutput "Constructing seed statements\n%!";
+  let seed = Seed.guess_seed_statements t rew in
+    verboseOutput "Constructing initial kb\n%!";
+    let kb = initial_kb seed rew in
+      verboseOutput "Saturating knowledge base\n%!";
+      guess_saturate kb rew ;
+      verboseOutput "Testing...\n";
+      let gr_tests = checks_guess_reachability (trace_contains_guess t) kb (Process.trace_size t) in
+      let results = (check_guess_reachability_tests t (gr_tests) Theory.rewrite_rules) in
+        (results != None)
+
+let gtests_of_trace show_progress t rew = 
+  Nproc.submit ppool (gtests_of_trace_job t) rew >>= fun x -> 
+    match x with 
+      | Some y -> if show_progress then do_count ();
+                  return y
+      | None -> failwith "fatal error in gtests_of_trace"
+
 let check_test_multi_job test trace_list =
   List.exists (fun x -> check_test x test Theory.rewrite_rules) trace_list
 
@@ -114,11 +133,13 @@ let rec variables_of_trace t =
           (* the Barendregt convention is not honoured *)
           raise (MultiplyBoundVariable x);
        StringSet.remove x fvs, StringSet.add x bvs
-     | Output (_, t) -> StringSet.union fvs (variables_of_term t), bvs
+     | Output (_, t)
+     | Guess(t) -> StringSet.union fvs (variables_of_term t), bvs
      | Test (t1, t2) ->
         let xs1 = variables_of_term t1 in
         let xs2 = variables_of_term t2 in
         StringSet.(union fvs (union xs1 xs2)), bvs
+     | Event ->  StringSet.(fvs), bvs
 
 let check_free_variables t =
   try
@@ -202,6 +223,37 @@ let query ?(expected=true) s t =
         (show_string_list t) (show_string_list s) (show_tests fail_ttests);
     if expected then exit 1
   end
+
+let query_guess_reach_trace t =
+  gtests_of_trace true t Theory.rewrite_rules
+
+let query_guess_reach ?(expected=true) t =
+  Printf.printf
+    "Checking if at least one of the following traces is %sguess-reachable.\n%s\n%!"
+    (if expected then "" else "not ") (show_string_list t);
+    let ttraces = List.concat (List.map (fun x -> traces @@ List.assoc x !processes) t) in
+    let ttraces = if List.exists (fun t -> not (is_trace_auto_guess t)) ttraces
+    then ( ttraces ) 
+    else (
+      List.fold_left 
+        (fun tl t -> (trace_guess_enhance t)@tl) 
+                      [] ttraces )
+       in
+
+    let maxTraceSize = List.fold_left (fun max x -> if Process.trace_size_ign_guess x > max then Process.trace_size_ign_guess x else max) 0 ttraces in
+    let ttraces = List.filter (fun x -> Process.trace_size_ign_guess x = maxTraceSize) ttraces in
+
+    verboseOutput "Traces to check:\n===\n"; 
+    List.iter (fun t -> verboseOutput "%s\n\n" (show_trace t)) ttraces;
+
+    let () = List.iter check_free_variables ttraces in
+    let () = reset_count (List.length ttraces) in
+      Printf.printf "%d traces will be checked\n%!" (List.length ttraces);
+    let result = (Lwt_list.exists_p (fun t -> let r = query_guess_reach_trace t
+                                     in (* do_count ();*)  r) ttraces) in
+    Lwt_main.run (Lwt.bind result (fun result -> (if result 
+                                                      then (Printf.printf "\nWe found a guess reachable trace !\n"; if not expected then exit 1)
+                                                      else (Printf.printf "\nNo reachable traces exist.\n"; if expected then exit 1)); Lwt.return () ))
 
 
 let inclusion_ct ?(expected=true) s t =
@@ -485,6 +537,12 @@ let print_traces tnl =
   let tl = List.concat (trmap (fun x -> (traces @@ List.assoc x !processes)) tnl) in
   print_trace_list tl
     
+
+let rec print_gr_tests (grt:(term * ((term * (term * term)) list)) list) =
+  match grt with 
+    | (w,rl)::tl -> Printf.printf "%s -> " (show_term w); List.iter (fun (g, (r1,r2)) -> Printf.printf "%s\n" (show_term_list [g;r1;r2] )) rl; print_gr_tests tl;
+    | [] -> ()
+
 let query_print traceName =
   let print_kbs ?(filter=fun _ -> true) s =
     let c = ref 0 in
@@ -531,10 +589,49 @@ let query_print traceName =
                   (List.filter is_ridentical_test tests)
                   Theory.rewrite_rules))
 
+let query_guess_print traceName =
+  let print_kbs ?(filter=fun _ -> true) s =
+    let c = ref 0 in
+      Base.S.iter
+        (fun f -> if filter f then begin
+           incr c ;
+           Printf.printf "%s\n" (show_statement f)
+         end)
+        s ;
+      Printf.printf "(total: %d statements)\n" !c
+  in
+  let t = trace_of_process(traces @@ List.assoc traceName !processes) in
+  let kb_seed = Seed.guess_seed_statements t Theory.rewrite_rules in
+    Printf.printf
+      "\n\nSeed statements of %s:\n%s\n\n%!"
+      traceName (show_kb_list kb_seed);
+    let kb = initial_kb kb_seed Theory.rewrite_rules in
+      Printf.printf
+        "Initial knowledge base of %s:\n\n%s%!"
+        traceName (show_kb kb);
+      guess_saturate kb Theory.rewrite_rules ;
+      Printf.printf "\n\nSolved statements after guess saturation:\n\n" ;
+      print_kbs (Base.solved kb) ;
+      Printf.printf "\nUnsolved statements after guess saturation:\n\n" ;
+      print_kbs (Base.not_solved kb) ;
+      Printf.printf "\n\nKnows solved statements in saturation:\n\n" ;
+      print_kbs ~filter:is_ext_deduction_st (Base.solved kb) ;
+      Printf.printf "\n\nKnows unsolved statements in saturation:\n\n" ;
+      print_kbs ~filter:is_ext_deduction_st (Base.not_solved kb) ;
+
+
+      let gr_tests = checks_guess_reachability (trace_contains_guess t) kb (Process.trace_size t) in
+        Printf.printf "Guess reachability tests:\n\n";
+        print_gr_tests gr_tests;
+        let results = (check_guess_reachability_tests t (gr_tests) Theory.rewrite_rules) in
+        if (results != None) then
+            Printf.printf "A reachable trace exists.\n"
+        else
+            Printf.printf "No reachable trace exists.\n"
+
 open Ast
 
 let processCommand = function
-
   | DeclProcess(name, process) ->
     verboseOutput "Declaring process %s\n%!" name;
     declare_process name process
@@ -545,6 +642,8 @@ let processCommand = function
     square ~expected traceList1 traceList2
   | QueryNegatable (expected, NegEvSquare (traceList1, traceList2)) ->
     evequiv ~expected traceList1 traceList2
+  | QueryNegatable (expected, NegGuessReach (traceList)) ->
+    query_guess_reach ~expected traceList
   | QueryNegatable (expected, NegIncFt (traceList1, traceList2)) ->
     inclusion_ft ~expected traceList1 traceList2
   | QueryNegatable (expected, NegIncCt (traceList1, traceList2)) ->
@@ -558,6 +657,9 @@ let processCommand = function
       "Printing trace list of %s\n%!"
       (show_string_list traceList);
     print_traces traceList
+  | QueryGuessPrint traceName ->
+    Printf.printf "Printing information about %s\n%!" traceName;
+    query_guess_print traceName
   | QueryVariants tt -> 
     let t = parse_term tt in
     Printf.printf

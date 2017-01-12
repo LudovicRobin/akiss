@@ -1,0 +1,6 @@
+weaknames g;
+channels C;
+
+r = guess(g).out(C,g).0;
+
+not guessreachable? r;

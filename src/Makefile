@@ -61,7 +61,17 @@ TESTS = \
   ../examples/xor/misc/xor3.api \
   ../examples/xor/misc/statxor.api ../examples/xor/misc/nstatxor.api \
   ../examples/xor/misc/xorsym.api \
-  ../examples/xor/misc/rigid.api 
+  ../examples/xor/misc/rigid.api \
+  ../examples/guess/misc/g1.api \
+  ../examples/guess/misc/g2.api \
+  ../examples/guess/misc/g3.api \
+  ../examples/guess/misc/g4.api \
+  ../examples/guess/misc/g5.api \
+  ../examples/guess/misc/g6.api \
+  ../examples/guess/misc/g7.api \
+  ../examples/guess/misc/g8.api \
+  ../examples/guess/misc/g9.api \
+  ../examples/guess/misc/ge1.api 
 
 # Basic tests + RFID tests without Toy-v1 + NSLxor tests,
 # without duplicates

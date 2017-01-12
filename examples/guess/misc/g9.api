@@ -1,0 +1,7 @@
+weaknames g1, g2;
+channels C;
+var X;
+
+t = out(C,g1).guess(g1).in(C,X).[X=g1].out(C,g2).guess(g2).0;
+
+guessreachable? t;

@@ -32,6 +32,8 @@ let channels : (string list) ref = ref []
 
 let private_names : (string list) ref = ref []
 
+let weaknames : (string list) ref = ref []
+
 type id = string
 
 type varName = id
@@ -111,6 +113,8 @@ let occurs var term =
 let rec show_term = function
   | Fun("!out!", term_list) ->
       show_term (Fun("out", term_list))
+  | Fun("!guess!", term_list) ->
+      show_term (Fun("guess", term_list))
   | Fun("!in!", term_list) ->
       show_term (Fun("in", term_list))
   | Fun("!test!", term_list) ->
@@ -129,6 +133,14 @@ and show_term_list = function
   | x :: l -> ( (show_term x) ^ "," ^ (show_term_list l) )
   | [] -> ""
 
+let rec is_guess_in_term t =
+    let gl = List.map (fun x -> Printf.sprintf "w%s" x) !weaknames in
+    match t with 
+    | Fun(f,[]) -> List.exists (fun g -> startswith f g) gl
+    | Fun(f,l) -> List.exists (is_guess_in_term) l
+    | Var(v) -> false
+
+
 let rec apply_subst term (sigma : subst) =
   match term with
     | Var(x) ->
@@ -138,6 +150,11 @@ let rec apply_subst term (sigma : subst) =
 	  term
     | Fun(symbol, list) ->
 	Fun(symbol, trmap (function x -> apply_subst x sigma) list)
+
+let rec apply_subst_until_fix_point term (sigma : subst) = 
+  if term = (apply_subst term sigma) then term
+  else (apply_subst_until_fix_point (apply_subst term sigma) sigma)
+
 
 let bound variable sigma =
   List.mem_assoc variable sigma
@@ -189,6 +206,12 @@ let rec parse_term (Ast.TempTermCons(x,l)) =
       else
         raise (Parse_error_semantic
                  (Printf.sprintf "private name %s used as function symbol" x))
+    else if List.mem x !weaknames then
+      if l = [] then
+        Fun(x, [])
+      else
+        raise (Parse_error_semantic
+                 (Printf.sprintf "weak name %s used as function symbol" x))
   else
       try
         let arity = List.assoc x !fsymbols in

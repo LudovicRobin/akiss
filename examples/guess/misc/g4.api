@@ -1,0 +1,8 @@
+symbols h/1;
+
+weaknames g;
+channels C;
+
+r = guess(g).out(C,h(g)).0;
+
+not guessreachable? r;

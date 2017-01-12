@@ -18,3 +18,4 @@
 (****************************************************************************)
 
 val seed_statements : Process.trace -> Term.rules -> Horn.statement list
+val guess_seed_statements : Process.trace -> Term.rules -> Horn.statement list

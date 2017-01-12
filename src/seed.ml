@@ -46,6 +46,8 @@ let rec worldreplempty w wp =
 let normalize_msg_atom rules = function
   | Predicate("knows", [w; r; t]) ->
       Predicate("knows", [R.normalize w rules; r; R.normalize t rules])
+  | Predicate("knows+", [w; r; t]) ->
+      Predicate("knows+", [R.normalize w rules; r; R.normalize t rules])
   | Predicate("reach", [w]) ->
       Predicate("reach", [R.normalize w rules])
   | Predicate("identical", [w; r; rp]) ->
@@ -135,6 +137,26 @@ let rec trace_statements_h oc tr rules substitutions body world clauses =
 			  body)  in
 	trace_statements_h oc remaining_trace rules next_substitutions body
 	  next_world ((trace_equationalize new_reach rules next_substitutions) @ clauses)
+    | Trace(Guess(g), remaining_trace) ->
+        let next_world = worldadd world (Fun("!guess!", [g])) in
+        let next_head = Predicate("knows",
+                                  [worldreplempty next_world (Var(fresh_variable ()));
+                                   Fun(current_parameter oc, []);
+                                      g]) in
+        let new_clause = (next_head, body) in
+        let new_reach = (Predicate("reach", [next_world]), body) in
+          trace_statements_h (oc + 1) remaining_trace rules substitutions body
+            next_world (List.concat [
+              (trace_equationalize new_clause rules substitutions);
+              (trace_equationalize new_reach rules substitutions);
+              clauses])
+    | Trace(Event, remaining_trace) ->
+        let next_world = worldadd world (Fun("!event!", [])) in
+        let new_reach = (Predicate("reach", [next_world]), body) in
+          trace_statements_h (oc + 1) remaining_trace rules substitutions body
+            next_world (List.concat [ (trace_equationalize new_reach rules substitutions);
+              clauses])
+
 ;;
 
 
@@ -172,7 +194,28 @@ let trace_statements tr rules =
          (kstatements))
 ;;
 
-
+let guess_context_statements symbol arity rules =
+  let w = Var(fresh_variable ()) in
+  let vYs = trmap fresh_variable (create_list () arity) in
+  let vZs = trmap fresh_variable (create_list () arity) in
+  let add_knows x y = Predicate("knows+", [w; x; y]) in
+  let box_vars names = trmap (function x -> Var(x)) names in
+  let body sigma = List.map2
+    (add_knows)
+    (box_vars vYs)
+    (trmap (function x -> apply_subst x sigma) (box_vars vZs))
+  in
+  let t = Fun(symbol, box_vars vZs) in
+  let v = R.variants t rules in
+    trmap (function (t',sigma) ->
+        new_clause
+          (Predicate("knows+",
+                     [w;
+                      Fun(symbol, box_vars vYs);
+                      t'
+                     ]),
+           body sigma)) 
+      v
 
 (** Compute the part of seed statements that comes from the theory. *)
 let context_statements symbol arity rules =
@@ -237,3 +280,18 @@ let seed_statements trace rew =
     trace_statements trace rew
   in
     List.concat [context_clauses; trace_clauses]
+
+
+let guess_seed_statements trace rew =
+  let classic_seed = seed_statements trace rew in
+  let guess_context_clauses =
+    List.concat
+      (List.map
+         (fun (f,a) ->
+            guess_context_statements f a rew)
+         (List.sort (fun (_,a) (_,a') -> compare a a') ((Theory.fsymbols))))
+  in 
+  let guess_weak_names_clauses = 
+      List.map (fun x -> Horn.new_clause (Predicate("knows+", [Var(fresh_variable ()); Fun(Printf.sprintf "w%s" (x),[]); Fun(x,[])]), [])) (Theory.weaknames) 
+  in
+    List.concat [classic_seed; guess_context_clauses; guess_weak_names_clauses]

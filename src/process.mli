@@ -25,6 +25,8 @@ type action =
   | Input of id * id
   | Output of id * term
   | Test of term * term
+  | Guess of term
+  | Event
 
 type trace =
   | NullTrace
@@ -54,6 +56,11 @@ exception Bound_variable
 exception Invalid_instruction
 exception Too_many_instructions
 
+val trace_size : trace -> int
+val trace_size_ign_guess : trace -> int
+val is_trace_auto_guess : trace -> bool
+val trace_guess_enhance : trace -> trace list
+val trace_contains_guess : trace -> bool
 val execute : trace -> term list -> term -> rules -> term list
 
 val is_reach_test : term -> bool
@@ -63,3 +70,4 @@ val restrict_frame_to_channels : term list -> trace -> id list -> term list
 val check_test : trace -> term -> rules -> bool
 val check_reach_tests : trace -> term list -> rules -> term option
 val check_ridentical_tests : trace -> term list -> rules -> term option
+val check_guess_reachability_tests : trace -> (term * ((term * (term * term)) list)) list -> rules -> term option

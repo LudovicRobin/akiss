@@ -35,6 +35,7 @@ val set_por : bool -> unit
 val fsymbols : (string * int) list
 val evchannels : string list
 val privchannels : string list
+val weaknames : string list
 val rewrite_rules : rules
 val evrewrite_rules : rules
 

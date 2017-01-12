@@ -32,6 +32,7 @@ type statement (** a Horn clause *)
 
 
 val is_deduction_st : statement -> bool
+val is_ext_deduction_st : statement -> bool
 val get_body : statement -> atom list
 
 (** {3 Printing} *)
@@ -63,11 +64,13 @@ val initial_kb : statement list -> rules -> Base.t
 (** {2 Saturation procedure} *)
 
 val saturate : Base.t -> rules -> unit
+val guess_saturate : Base.t -> rules -> unit
 
 (** {2 Recipe stuff} *)
 
 val revworld : term -> term
 val checks : Base.t -> term list
+val checks_guess_reachability : bool -> Base.t -> int -> (term * (term * (term * term)) list) list
 val show_tests : term list -> string
 
 (** Opti stuff *)

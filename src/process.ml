@@ -20,6 +20,7 @@
 open Parser
 open Util
 open Term
+open Theory
 open Horn
 
 module R = Theory.R
@@ -30,6 +31,8 @@ type action =
   | Input of id * id
   | Output of id * term
   | Test of term * term
+  | Guess of term
+  | Event 
 ;;
 
 let is_io_action a =
@@ -37,12 +40,16 @@ let is_io_action a =
   | Input(_,_)
   | Output(_,_) -> true
   | Test (_,_) -> false
+  | Guess(_) -> true 
+  | Event -> false
       
 let remove_term_in_io_action a =
   match a with
   | Input(c,_) -> Input(c,"")
   | Output(c,_) -> Output(c,Var(""))
   | Test(t1,t2) -> Test(t1,t2)
+  | Guess(g) -> Guess(g)
+  | Event -> Event
     
 module ActionSet = Set.Make( 
   struct
@@ -60,6 +67,47 @@ let rec trace_size = function
   | Trace(_, t) -> 1 + (trace_size t)
 ;;
 
+let rec trace_size_ign_guess = function
+  | NullTrace -> 0
+  | Trace(Guess(_),t) -> (trace_size t)
+  | Trace(_, t) -> 1 + (trace_size t)
+
+let rec trace_append ttoadd t =
+  match t with 
+    | Trace(a, tr) -> Trace(a, trace_append ttoadd tr)
+    | NullTrace -> ttoadd
+
+let rec is_trace_auto_guess = function
+    | Trace(Guess(_), _) -> false 
+    | Trace(_,tr) -> is_trace_auto_guess tr
+    | NullTrace -> true 
+
+let rec trace_guess_enhance_h (wname : action) (trace : trace) : trace list = 
+  match trace with
+    | Trace(Output(_,_) as a,tr) ->
+        (Trace(a,Trace(wname,tr)))::
+        (List.rev_map 
+           (fun x ->
+           (trace_append x (Trace(a,NullTrace))))
+           (trace_guess_enhance_h wname tr))
+    | Trace(a, tr) -> 
+        List.rev_map (fun x -> trace_append x (Trace(a,NullTrace)))
+          (trace_guess_enhance_h wname tr)
+    | NullTrace -> [NullTrace]
+
+let trace_guess_enhance t =
+    List.fold_left 
+      (fun tl wn -> 
+         let g = Guess(Fun(wn,[])) in 
+           (List.fold_left 
+              (fun rtl t -> (trace_guess_enhance_h g t) @ rtl 
+           ) [] tl)
+      ) [t] Theory.weaknames
+
+let rec trace_contains_guess = function
+    | Trace(Guess(term),_) -> true
+    | Trace(_,tl) -> trace_contains_guess tl
+    | NullTrace -> false
 
 type process = trace list;;
 
@@ -74,10 +122,21 @@ let show_frame fr =
   show_string_list (trmap show_term fr)
 ;;
 
+let rec show_frame_enhanced_h fr cnt = 
+    match fr with 
+    | [] -> ""
+    | hd::tl -> String.concat " | " ((Printf.sprintf "(w%d -> %s)" (cnt) (show_term
+    hd))::[show_frame_enhanced_h tl (cnt + 1)])
+
+let show_frame_enhanced fr = show_frame_enhanced_h fr 0 
+
+
 let show_action = function
   | Input(ch, x) -> Printf.sprintf "in(%s,%s)" ch x
   | Output(ch, t) -> Printf.sprintf "out(%s,%s)" ch (show_term t)
   | Test(s,t) -> Printf.sprintf "[%s=%s]" (show_term s) (show_term t)
+  | Guess(g) -> Printf.sprintf "guess(%s)" (show_term g)
+  | Event -> Printf.sprintf "event" 
 ;;
 
 let rec show_trace = function
@@ -88,6 +147,14 @@ let rec show_trace = function
 let rec show_process process =
   String.concat "\n\n" (trmap show_trace process)
 ;;
+
+let rec show_guess_tests_list rl = 
+    match rl with 
+    | (g,(r1,r2))::tl -> String.concat " | " ((Printf.sprintf "[%s,(%s,%s)]"
+    (show_term g) (show_term r1) (show_term r2))::[(show_guess_tests_list
+    tl)])
+    |  [] -> "" 
+
 
 (** {3 Parsing} *)
 
@@ -110,6 +177,8 @@ let rec parse_action = function
     else
       Printf.ksprintf failwith "Undeclared channel: %s" ch
   | TempActionTest(s, t) -> Test(parse_term s, parse_term t)
+  | TempActionGuess(t) -> Guess(parse_term t) 
+  | TempActionEvent -> Event
 ;;
 
 let replace_var_in_term x t term =
@@ -165,10 +234,12 @@ let replace_var_in_act x t a =
   match a with
   | Input (_, _) -> a
   | Output (c, term) -> Output (c, replace_var_in_term x t term)
+  | Guess (term) -> Guess(replace_var_in_term x t term)
   | Test (term1, term2) ->
      let term1 = replace_var_in_term x t term1 in
      let term2 = replace_var_in_term x t term2 in
      Test (term1, term2)
+  | Event -> Event
 
 let rec replace_var_in_symb x t p =
   match p with
@@ -195,6 +266,7 @@ let rec symb_of_temp process processes =
   match process with
   | TempEmpty -> SymbNul
   | TempAction a -> SymbAct [parse_action a]
+  | TempSequence (TempAction(TempActionEvent), p2) -> SymbNul
   | TempSequence (p1, p2) ->
      let p1 = symb_of_temp p1 processes in
      let p2 = symb_of_temp p2 processes in
@@ -309,6 +381,8 @@ let classify_action = function
   | Output (c, t) :: _ ->
      if List.mem c Theory.privchannels
      then PrivateOutput (c, t) else PublicAction
+  | Guess (_) :: _ -> PublicAction
+  | Event :: _ -> PublicAction
 
 module Trace = struct type t = trace let compare = Pervasives.compare end
 module TraceSet = Set.Make (Trace)
@@ -497,6 +571,30 @@ let rec apply_frame term frame =
       Var(x)
 ;;
 
+let frame_ext = List.map (fun x -> (Fun(Printf.sprintf "w%s" x, []),Fun(x,[]))) Theory.weaknames;;
+let frame_extf g = 
+  List.map (fun x -> 
+              if g = Fun(x,[]) then begin 
+                (Fun(Printf.sprintf "w%s" x, []),Fun(Printf.sprintf "%s'" x,[]))
+              end  
+              else 
+                (Fun(Printf.sprintf "w%s" x, []),Fun(x,[]))) 
+    Theory.weaknames;;
+
+
+let rec apply_frame_ext term frame_ext =
+  match term with
+    | Fun(name, []) as f->
+      (
+	try
+        (List.assoc f frame_ext)
+	with _ -> f
+      ) 
+    | Fun(f, tl) ->
+      Fun(f, trmap (fun x -> apply_frame_ext x frame_ext) tl)
+    | Var(x) ->
+      Var(x)
+
 let rec apply_subst_tr pr sigma = match pr with
   | NullTrace -> NullTrace
   | Trace(Input(ch, x), rest) -> 
@@ -510,6 +608,10 @@ let rec apply_subst_tr pr sigma = match pr with
     Trace(Test(apply_subst x sigma, apply_subst y sigma), apply_subst_tr rest sigma)
   | Trace(Output(ch, x), rest) ->
     Trace(Output(ch, apply_subst x sigma), apply_subst_tr rest sigma)
+  | Trace(Guess(x), rest) ->
+    Trace(Guess(apply_subst x sigma), apply_subst_tr rest sigma)
+  | Trace(Event, rest) ->
+    Trace(Event, apply_subst_tr rest sigma)
 ;;
 
 let rec execute_h_dumb process instructions =
@@ -534,6 +636,8 @@ let rec execute_h_dumb process instructions =
 	    execute_h_dumb pr ir 
 	  else
 	   false 
+      | (Trace(Guess(g), pr), Fun("world", [Fun("!guess!", [gg]); ir])) ->
+	    execute_h_dumb pr ir 
       | _ ->  false
   )
 ;;
@@ -564,6 +668,8 @@ let rec execute_h process frame instructions rules =
 	    execute_h pr (List.append frame [x]) ir rules
 	  else
 	    raise Invalid_instruction
+      | (Trace(Guess(g), pr), Fun("world", [Fun("!guess!", [gg]); ir])) ->
+	    execute_h pr (List.append frame [g]) ir rules
       | _ -> raise Invalid_instruction
   )
 ;;
@@ -673,6 +779,44 @@ let check_ridentical process test_ridentical rules = match test_ridentical with
     )
   | _ -> invalid_arg("check_ridentical")
 ;;
+let rec check_guess_reachability_recipes rl frame rules = 
+    match rl with 
+      | (g, (r1,r2))::tl -> 
+          let t1 = apply_frame r1 frame in
+          let t2 = apply_frame r2 frame in
+            let t1_ext = apply_frame_ext t1 (frame_ext) in
+            let t2_ext = apply_frame_ext t2 (frame_ext) in
+          let (t1_extf, t2_extf) = (apply_frame_ext t1 (frame_extf g), apply_frame_ext t2 (frame_extf g)) in
+            if  (R.equals t1_ext t2_ext rules) && (not (R.equals t1_extf t2_extf rules)) then (check_guess_reachability_recipes tl frame rules) 
+            else 
+              (
+                false
+              )
+      | [] -> 
+          true
+
+let check_guess_reachability process test_gr rules = match test_gr with 
+  | (w,rl) ->
+      (
+        try
+          let frame = execute process [] w rules in
+            if rl = [] then 
+                begin
+                verboseOutput "Guess reachability test:\n %s \n => %s \n%!" (show_term w) (show_frame_enhanced frame); true 
+              end
+            else begin
+          let guess_checked = check_guess_reachability_recipes rl frame rules in
+          if guess_checked then Printf.printf "\nGuess reachability test:\n %s \n => %s \n => | %s \n%!" (show_term w) (show_frame_enhanced frame) (show_guess_tests_list rl); 
+          (guess_checked)
+            end
+        with 
+          | Process_blocked -> Printf.printf "1\n%!"; false
+          | Too_many_instructions ->Printf.printf "2\n%!"; false
+          | Not_a_recipe ->Printf.printf "3\n%!"; false
+          | Invalid_instruction ->Printf.printf "4\n%!"; false
+          | Bound_variable ->Printf.printf "5\n%!"; invalid_arg("the process binds twice the same variable")
+      )
+
 
 let rec restrict_frame_to_channels frame trace ch =
 (* given a trace and a frame resulting from an execution of trace, restrict elements in frame to outputs on channels in ch *)
@@ -725,4 +869,21 @@ let rec check_ridentical_tests trace ridentical_tests rules =
 	    check_ridentical_tests trace t rules
 	)
     | [] -> None
-;;
+
+let rec check_guess_reachability_tests trace test_gr rules =
+  match test_gr with
+    | (w,rl) :: t -> 
+        (
+          if (check_guess_reachability trace (w,rl) rules) then 
+            (
+              debugOutput "Good guess found. ===\n";
+              Some w
+            )
+          else
+            (
+              check_guess_reachability_tests trace t rules
+            )
+        )
+    | [] ->  None 
+
+

@@ -1,0 +1,6 @@
+weaknames g;
+channels C;
+
+r = out(C,g).guess(g).0;
+
+guessreachable? r;

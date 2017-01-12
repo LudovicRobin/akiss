@@ -126,8 +126,16 @@ let is_deduction_st = function
   | {head=Predicate("knows", _)} -> true
   | _ -> false
 
+let is_ext_deduction_st = function
+  | {head=Predicate(k, _)} when k = "knows" || k = "knows+" -> true
+  | _ -> false
+
 let is_equation_st = function
   | {head=Predicate("identical", _)} -> true
+  | _ -> false
+
+let is_ext_equation_st = function
+  | {head=Predicate("eidentical", _)} -> true
   | _ -> false
 
 let is_reach_st = function
@@ -138,12 +146,48 @@ let is_ridentical_st = function
   | {head=Predicate("ridentical", _)} -> true
   | _ -> false
 
+let is_ext_ridentical_st = function
+  | {head=Predicate("eridentical", _)} -> true
+  | _ -> false
+
+let rec world_length = function
+  | Fun ("world",[_;w]) -> 1 + world_length w
+  | Fun ("empty",[]) -> 0
+  | Var _ -> 0
+  | _ as e -> Printf.printf "Error world length\n%!"; Printf.printf "test : %s\n%!" (show_term e); raise Not_found
+
+let get_world_length_st cl =
+  match cl with
+    | {head=Predicate(_, w::l)} -> (world_length w)
+    | _ -> 0 
+
+let is_world_size_st cl s =
+  match cl with
+    | {head=Predicate(r, w::_)} 
+        when (r = "ridentical") || 
+             (r = "reach") || 
+             (r = "eridentical") ||
+             (r = "eidentical") -> ((world_length w) == s)
+        | _ -> false
+
+let rec count_guess_w_h w c = match w with
+  | Fun("world", [Fun("!guess!", _);r]) -> count_guess_w_h r (c + 1)
+  | Fun("world", [_;r]) -> count_guess_w_h r c
+  | Fun("empty", _) -> c
+  | Var(_) -> c
+  | _ as t -> (Printf.printf "%s  " (show_term t); invalid_arg("count_guess_h"))
+
+let count_guess_w = function 
+  | {head=Predicate(_, w::_)} -> count_guess_w_h w 0
+  | _ -> invalid_arg("count_guess")
+
+
 (** A statement is solved if all its premises have a variable as their last
   * argument. *)
 let is_solved_body body =
   List.for_all
     (function
-       | Predicate("knows", [_; rx; x]) ->
+       | Predicate(k, [_; rx; x]) when k = "knows" || k = "knows+" ->
            assert (is_var rx) ;
            is_var x
        | _ -> invalid_arg("is_solved"))
@@ -159,23 +203,35 @@ let rec vars_of_horn_clause {head=head;body=body} =
             (vars_of_atom head))
 
 let get_world = function
-  | Predicate("knows", [w; _; _]) -> w
+  | Predicate(k, [w; _; _]) when k = "knows" || k = "knows+" -> w
   | _ -> invalid_arg("get_world")
 
 let get_recipe = function
-  | Predicate("knows", [_; r; _]) -> r
+  | Predicate(k, [_; r; _]) when k = "knows" || k = "knows+" -> r
   | _ -> invalid_arg("get_recipe")
 
 let get_recipes = function
   | Predicate("knows", [_; r; _]) -> [r]
+  | Predicate("knows+", [_; r; _]) -> [r]
   | Predicate("identical", [_; r1; r2])
+  | Predicate("eidentical", [_; r1; r2])
   | Predicate("ridentical", [_; r1; r2]) -> [r1;r2]
+  | Predicate("eridentical", _::l) -> l
   | Predicate("reach",[_]) -> []
   | _ -> assert false
 
 let get_term atom = match atom with
-  | Predicate("knows", [_; _; t]) -> t
+  | Predicate(k, [_; _; t]) when k = "knows" || k = "knows+" -> t
   | _ -> invalid_arg("get_term")
+
+let is_extended atom = match atom with
+  | Predicate("knows", _) -> false
+  | Predicate("knows+", _) -> true
+  | _ -> invalid_arg(Printf.sprintf "is_extended") 
+
+let make_extended atom = match atom with
+  | Predicate("knows", r) -> Predicate("knows+", r)
+  | _ -> invalid_arg(Printf.sprintf "make_extended") 
 
 let size st = List.length st.body
 
@@ -204,6 +260,10 @@ let term_from_atom (Predicate(name, al)) =
 
 let term_from_statement {head=head;body=body} =
   Fun("!tuple!",  (term_from_atom head) :: (trmap term_from_atom body))
+
+let is_guess_in_term_st {head=head} = 
+  let t = get_recipes head in
+  List.exists (is_guess_in_term) t
 
 (** {3 Printing} *)
 
@@ -299,6 +359,11 @@ let csu_atom opti a1 a2 =
 let apply_subst_atom atom sigma = match atom with
   | Predicate(name, term_list) ->
       Predicate(name, trmap (fun x -> apply_subst x sigma) term_list)
+
+let apply_subst_atom_until_fixpoint atom sigma = match atom with
+  | Predicate(name, term_list) ->
+      Predicate(name, trmap (fun x -> apply_subst_until_fix_point x sigma) term_list)
+
 
 let apply_subst_st st sigma =
   { st with
@@ -398,7 +463,8 @@ let new_clause =
     (* We return -1 when p should occur before q in the body,
      * 1 in the opposite case and 0 when it does no matter. *)
     match p,q with
-      | Predicate ("knows",[_;Var r1;t1]), Predicate ("knows",[_;Var r2;t2]) ->
+      | Predicate (k1,[_;Var r1;t1]), Predicate (k2,[_;Var r2;t2])
+         when (k1 = "knows" || k1 = "knows+") && (k2 = "knows" || k2 = "knows+") ->
 		if(opti_sort) then begin
           (* Prioritize terms that pass this test *)
           let check f x1 x2 k =
@@ -441,9 +507,12 @@ let new_clause =
           !c
           (match head with
              | Predicate ("knows",_) -> "k"
+             | Predicate ("knows+",_) -> "k+"
              | Predicate ("reach",_) -> "r"
              | Predicate ("identical",_) -> "i"
+             | Predicate ("eidentical",_) -> "ei"
              | Predicate ("ridentical",_) -> "ri"
+             | Predicate ("eridentical",_) -> "eri"
              | _ -> assert false)
           !c
           (String.concat ","
@@ -507,7 +576,16 @@ let rec is_prefix_world small_world big_world =
 module Statements = struct
   type t = statement
   let is_solved = is_solved
+  let is_reach_st = is_reach_st
+  let is_ext_equation_st = is_ext_equation_st
+  let is_ridentical_st = is_ridentical_st
+  let is_ext_ridentical_st = is_ext_ridentical_st
+  let is_world_size_st = is_world_size_st
+  let world_length = get_world_length_st 
+  let count_guess_w = count_guess_w
   let compare = compare
+  let show_statement = show_statement
+  let is_guess_in_term_st = is_guess_in_term_st
 end
 
 module Base = struct
@@ -539,6 +617,7 @@ module Base = struct
 end
 
 let only_knows kb = List.filter is_deduction_st kb
+let filtered_extended_knows kb = List.filter is_ext_deduction_st kb
 
 let only_solved kb = Base.only_solved kb
 
@@ -670,7 +749,10 @@ let canonical_form statement =
 (* TODO AC term equality for t and tp? not if conseq stays syntactic in draft
  * not needed for worlds because we don't even need to look at their terms *)
 let is_same_t_smaller_w atom1 atom2 = match (atom1, atom2) with
-  | (Predicate("knows", [w; _; t]), Predicate("knows", [wp; _; tp])) ->
+  | (Predicate(k1, [w; _; t]), Predicate(k2, [wp; _; tp])) 
+      when (k1 = "knows" || k1 = "knows+") 
+      && (k2 = "knows" || k2 = "knows+") 
+      && not(k1 = "knows" && k2 = "knows+") ->
       (is_prefix_world wp w) && (t = tp)
   | _ -> invalid_arg("is_same_t_smaller_w")
 
@@ -745,7 +827,8 @@ let consequence st kb rules =
     match head with
       | Predicate("knows", [_; _; Fun(name, [])]) when (startswith name "!n!") ->
           `Public_name, Fun(name, [])
-      | Predicate("knows", [w; _; t]) ->
+      | Predicate("knows", [w; _; t])
+      | Predicate("knows+", [w; _; t]) ->
           begin try
             (* Base case: Axiom rule of conseq *)
             `Axiom, get_recipe (List.find (is_same_t_smaller_w head) body)
@@ -808,6 +891,7 @@ let consequence st kb rules =
 let is_reflexive st =
   match st.head with
     | Predicate("knows", _) -> true
+    | Predicate("knows+", _) -> true
     | Predicate("reach", _) -> true
     | Predicate("identical", [_; r; rp])
     | Predicate("ridentical", [_; r; rp]) ->
@@ -856,14 +940,24 @@ let normalize_new_statement rules f =
           | Some t', Some w' -> Some (Predicate ("knows",[w';renorm r;t']))
           | None,_ | _,None -> None
         end
+    | Predicate ("knows+",[w;r;t]) ->
+        begin match process t, process w with
+          | Some t', Some w' -> Some (Predicate ("knows+",[w';renorm r;t']))
+          | None,_ | _,None -> None
+        end
     | Predicate ("reach",[w]) ->
         begin match process w with
           | Some w' -> Some (Predicate ("reach",[w']))
           | None -> None
         end
-    | Predicate (id,[w;r;r']) -> (* covers identical and ridentical *)
+    | Predicate (id,[w;r;r']) when (id = "ridentical" || id = "identical") -> 
         begin match process w with
           | Some w' -> Some (Predicate (id,[w';renorm r;renorm r']))
+          | None -> None
+        end
+    | Predicate (id,w::rl) when (id = "eridentical" || id = "eidentical") ->
+        begin match process w with
+          | Some w' -> Some (Predicate (id, (w'::(List.map (fun x -> renorm x) rl))))
           | None -> None
         end
     | _ -> assert false
@@ -938,6 +1032,67 @@ let update (kb : Base.t) rules (f : statement) : unit =
       Base.add ~needs_check:Theory.xor fc rules kb
   else
     Base.add fc rules kb
+
+(** Update a knowledge base with a new statement. This involves canonizing
+  * the statement, checking whether it already belongs to the consequences
+  * of the base, and actually inserting the statement or a variant of it. *)
+let ext_update (kb : Base.t) rules (f : statement) : unit =
+
+  (* Do not use [is_normal], in order to replace [f] by its normalization.
+   * It is equal modulo AC but will additionnally be normalized wrt some
+   * order, which eases reading and gives / may give more power to non-AC
+   * tests, eg. in consequence. *)
+  let f = normalize_identical f in
+  match normalize_new_statement rules f with
+    | None -> ()
+    | Some f ->
+
+  let vip = f.vip in
+
+  (** Freshen only now to avoid freshening the (many) non-normal clauses
+    * that the procedure generates. We don't want to do it too late, though:
+    * freshening should come before normalization to preserve the (weak)
+    * canonical forms it provides. *)
+  let f = fresh_statement f in
+
+  match
+    if Theory.xor then let f = canonical_form f in
+      Some (if is_solved f then remove_marking f else f)
+    else
+      (* Canonize, normalize again and keep only normal clauses. *)
+      let f = canonical_form f in
+        normalize_new_statement rules f
+  with None -> () | Some fc ->
+
+  if drop_reflexive && is_reflexive fc then () else
+  if is_ext_deduction_st fc && is_solved fc && not vip && use_conseq then
+    try
+      let recipe = consequence fc kb rules in
+      let world = get_world fc.head in
+      let newhead =
+        Predicate("eidentical", [world; get_recipe fc.head; recipe])
+      in
+      let newclause = normalize_identical { fc with head = newhead } in
+        (* No need to freshen [newclause], since it has the same variables as
+         * [fc] which is fresh. *)
+        debugOutput
+          "Useless: %s\n\
+           Original form: %s\n\
+           Replaced by: %s\n\n%!"
+          (show_statement fc)
+          (show_statement f)
+          (show_statement newclause);
+        if not (drop_reflexive && is_reflexive newclause) then
+          Base.add newclause rules kb
+    with Not_a_consequence ->
+      (* If we ran conseq, no need to check whether the clause is already
+       * in the knowledge base.
+       * This optim seems incorrect with xor. TODO make sure why. *)
+      Base.add ~needs_check:Theory.xor fc rules kb
+  else
+    Base.add fc rules kb
+
+
 
 (** {2 Initial knowledge base}
   * Seed statements are generated in [Main] and [Process].
@@ -1128,6 +1283,82 @@ let resolution master slave =
              result)
         sigmas
 
+let ext_resolution master slave =
+  let test x = (is_ext_deduction_st slave) && (not (is_var (get_term x)) && (is_extended x || not(is_extended x) && not(is_extended slave.head))) in 
+
+    if List.for_all (fun x -> not(test x)) master.body then [] else
+      let atom = List.find (fun x -> 
+                              not (is_var (get_term x)) && 
+                              (is_extended x || 
+                               not(is_extended x) && not(is_extended slave.head))
+      ) master.body in
+
+
+    (*let atom = List.find (fun x -> not (is_var (get_term x))) master.body
+     * in*)
+
+    (* Fail immediately if slave's head isn't a knows statement. *)
+    if not (is_ext_deduction_st slave) then [] else
+
+    (* Forbid resolution against f0+ clause if selected atom is marked. *)
+    if Theory.xor && is_marked (unbox_var (get_recipe atom)) &&
+       is_plus_clause slave
+    then [] else
+    let sigmas = 
+      if is_extended atom && not (is_extended slave.head) then
+        csu_atom false atom (make_extended slave.head)
+      else 
+        csu_atom (Theory.xor && is_plus_clause slave) atom slave.head in
+    let sigmas = propagate_marking sigmas in
+    let length = List.length sigmas in
+    if !debug_output && length > 0 then begin
+      debugOutput "Resolution?\n FROM: %s\n AND : %s\n\n"
+        (show_statement master)
+        (show_statement slave) ;
+      Format.printf "csu of size %d:\n" length ;
+      List.iter
+        (fun s -> Format.printf "> %s\n" (show_subst s))
+        sigmas
+    end ;
+   let sigmas =
+      if sigmas = [] || not Theory.xor then sigmas else
+        match deconstruct_plus_clause (slave.head,slave.body) with
+          | None -> sigmas
+          | Some (rx,ry,x,y) ->
+              generate_dynamic_marking sigmas
+                ~t:(get_term atom) ~rx ~x ~ry ~y
+    in
+    let () =
+      if !debug_output && List.length sigmas < length then begin
+        Format.printf "filtered csu of size %d:\n" (List.length sigmas) ;
+        List.iter
+          (fun s -> Format.printf "+ %s\n" (show_subst s))
+          sigmas
+      end
+    in
+
+      (* Create results *)
+      List.map
+        (fun sigma ->
+           let result =
+             let head = apply_subst_atom master.head sigma in
+             let body =
+               List.map (fun x -> apply_subst_atom x sigma)
+                 (List.append
+                    slave.body
+                    (List.filter (fun x -> (x <> atom)) master.body))
+             in
+               new_clause
+                 ~label:"res"
+                 ~vip:master.vip
+                 ~parents:[master;slave]
+                 (head,body)
+           in
+             debugOutput "RESO: %s\n\n"
+               (show_statement result);
+             result)
+        sigmas
+
 (** [equation fa fb] takes two solved clauses and, when they are solved clauses
   * concluding "knows", attempts to combine them: if the terms and worlds can be
   * unified, generate a clause concluding that the recipes are "identical".
@@ -1220,6 +1451,116 @@ let equation fa fb =
     else
       []
 
+let ext_equation fa fb =
+
+  if
+    is_ext_deduction_st fa && is_ext_deduction_st fb &&
+    (* When dealing with xor, forbid Equation if one clause is f0+. *)
+    (not Theory.ac || not (is_plus_clause fa || is_plus_clause fb))
+  then
+
+    (* The rule is called only once per (unordered) pair.
+     * We have to treat one clause against itself, in which case it needs
+     * to be refreshed; such cases were all trivial in the original Akiss
+     * but not with xor. *)
+    let fa = if fa.id = fb.id then fresh_statement fa else fa in
+
+      match get_head fa, get_head fb with
+        | (Predicate(k1, [ul; r; t]),
+           Predicate(k2, [upl; rp; tp])) 
+            when (k1 = "knows" || k1 = "knows+") 
+            && (k2 = "knows" || k2 = "knows+")
+            && r <> rp
+          ->
+            debugOutput "Equation:\n %s\n %s\n%!"
+              (show_statement fa) (show_statement fb) ;
+            let t1 = Fun("!tuple!", [t; ul]) in
+            let t2 = Fun("!tuple!", [tp; upl]) in
+            let sigmas = R.csu t1 t2 in
+            let sigmas = propagate_marking sigmas in
+            let sigmas =
+              (* Performing equation on twice the same clause is useless
+               * if the unifier is trivial, ie. when it is essentially a
+               * renaming. In those cases the resulting identical atom is
+               * an instance of reflexivity.
+               * The only non trivial cases should come from the plus clause,
+               * but not all of its unifiers are non-trivial. *)
+              if eqrefl_opt && fa.id = fb.id then
+                let nontrivial sigma =
+                  let v1 = vars_of_term t1 in
+                  let v2 = vars_of_term t2 in
+                  let rec unique = function
+                    | x::y::l ->
+                        if x=y then unique (y::l) else x :: unique (y::l)
+                    | l -> l
+                  in
+                    try
+                      let assoc x sigma =
+                        try List.assoc x sigma with Not_found -> Var x
+                      in
+                      let image v =
+                        unique
+                          (List.sort String.compare
+                             (List.map
+                                (fun x -> unbox_var (assoc x sigma))
+                                v))
+                      in
+                      let v'1 = image v1 in
+                      let v'2 = image v2 in
+                        assert (List.length v1 = List.length v2) ;
+                        not (List.length v'1 = List.length v1 && v'1 = v'2)
+                    with Invalid_argument "unbox_var" -> true
+                in
+                let sigmas' = List.filter nontrivial sigmas in
+                let l' = List.length sigmas' in
+                  if l' < List.length sigmas then
+                    debugOutput "Non-trivial solutions: %d\n" l' ;
+                  sigmas'
+              else
+                sigmas
+            in
+            let newhead = Predicate("eidentical", [ul; r; rp]) in
+            let newbody = List.append (get_body fb) (get_body fa) in
+            let clauses =
+              List.map
+                (fun sigma ->
+                   let st =
+                     apply_subst_atom newhead sigma,
+                     List.map (fun x -> apply_subst_atom x sigma) newbody
+                   in
+                     new_clause ~label:"eq" ~parents:[fa;fb] st)
+                sigmas
+            in
+              if sigmas <> [] then
+                debugOutput "Generated clauses %s.\n"
+                  (String.concat ","
+                     (List.map (fun st -> "#"^string_of_int st.id) clauses)) ;
+              clauses
+        | (Predicate(k1, [ul; r; t]),
+           Predicate(k2, [upl; rp; tp])) 
+            when (k1 = "knows" || k1 = "knows+") 
+            && (k2 = "knows" || k2 = "knows+") -> []
+          | _ -> invalid_arg("ext_equation")
+    else
+      []
+
+let rec unifiers_n_h (l : atom list) (sigma) :subst list = 
+  match l with
+    | (Predicate(_,w1::_))::((Predicate(_,w2::_) as c)::tl) -> 
+        (
+          (*Printf.printf "Worlds : (%s,%s)\n" (show_term w1) (show_term
+           * w2);*)
+          let sigmas = R.csu w1 w2 in 
+  List.concat (List.map (fun s -> unifiers_n_h ((apply_subst_atom_until_fixpoint c
+                                                   s)::tl) (List.concat [sigma;s])) sigmas)
+        )
+    | _ -> [sigma]
+
+
+let rec unifiers_n (l : atom list) : subst list = 
+  unifiers_n_h l []
+
+
 (** [ridentical fa fb] attempts to combine two clauses when one
   * concludes "identical" and the other concludes "reach" and
   * their world params match.
@@ -1253,6 +1594,39 @@ let rec ridentical fa fb =
       | Predicate("reach",_),Predicate("identical",_) -> ridentical fb fa
       | _ -> []
 
+let rec eridentical fa fb =
+  match fa.head with
+    | Predicate("reach", [up]) -> 
+        assert (is_solved fa && (List.for_all (fun x -> is_solved x) fb)) ;
+        debugOutput
+          "eridentical trying to combine %s with some others\n%!"
+          (show_statement fa) ;
+        let sigmas = unifiers_n (fa.head::(List.map (fun x -> x.head) fb)) in
+          List.map
+            (fun sigma ->
+               let newhead = Predicate("eridentical", 
+                   up::(List.concat (List.map (fun x-> (match x.head with 
+                                                          | Predicate("eidentical", [u; r; rp]) -> [r ; rp] 
+                                                          | _ -> [] 
+                                                                                   )
+               )
+                                                                         fb))) in
+               let newbody = List.append (get_body fa) (List.concat (List.map (fun fbi -> get_body fbi) fb)) in
+               let result =
+                 apply_subst_atom_until_fixpoint newhead sigma,
+                 List.map (fun x -> apply_subst_atom_until_fixpoint x sigma) newbody
+               in
+               let result = new_clause ~label:"eri" ~parents:(fa::fb) result in
+                 debugOutput "\nCurrent Sigma : %s\n" (show_subst sigma);
+                 debugOutput "\n\nRID FROM: %s\nRID AND : %s\nRID GOT: %s\n\n%!" 
+                   (show_statement fa) (String.concat "\n" (List.map (fun x
+                                                                      -> Printf.sprintf "%s" (show_statement x)) fb))
+                   (show_statement result);
+                 result)
+            sigmas
+    | _ -> []
+
+
 (** {2 Saturation procedure} *)
 
 let saturate_step_not_solved rules kb =
@@ -1262,6 +1636,12 @@ let saturate_step_not_solved rules kb =
         let new_statements = resolution not_solved solved in
           List.iter (update kb rules) new_statements ;
           true
+
+let saturate_ext_ri_step_solved rules kb = 
+  match Base.next_ri_solved kb with
+    | None -> false
+    | Some (f,g) -> ( List.iter (ext_update kb rules) (eridentical f g) ; true)
+
 
 let saturate_step_solved rules kb =
   match Base.next_solved kb with
@@ -1278,6 +1658,30 @@ let saturate kb rules =
   while saturate_step_not_solved rules kb
      || saturate_step_solved rules kb
   do () done
+
+let guess_saturate_step_solved rules kb =
+  match Base.next_solved kb with
+    | None -> false
+    | Some (f,g) ->
+        List.iter (ext_update kb rules) (ext_equation f g) ;
+        true
+
+let guess_saturate_step_not_solved rules kb =
+  match Base.next_not_solved kb with
+    | None -> false
+    | Some (solved,not_solved) ->
+        let new_statements = ext_resolution not_solved solved in
+          List.iter (ext_update kb rules) new_statements ;
+          true
+
+let guess_saturate kb rules =
+  assert (if Theory.xor then List.mem ("zero",0) !fsymbols else true) ;
+  print_flags () ;
+  while guess_saturate_step_not_solved rules kb
+     || guess_saturate_step_solved rules kb
+     || saturate_ext_ri_step_solved rules kb
+  do () done
+
 
 (** {2 Recipe stuff} *)
 
@@ -1319,7 +1723,8 @@ let for_each l (succ:'a list succ) (fail:cont) (f:'b -> 'a succ -> cont -> unit)
 
 let rec find_recipe_h atom kbs (succ:term succ) (fail:cont) =
   match atom with
-    | Predicate("knows", [_; _; Fun(name, [])]) when startswith name "!n!" ->
+    | Predicate(k, [_; _; Fun(name, [])])
+        when startswith name "!n!" && (k = "knows" || k = "knows+") ->
         succ (Fun(name, [])) fail
     | _ ->
         for_some kbs succ fail
@@ -1376,6 +1781,8 @@ let rec recipize_h (tl : term) kb =
 		Fun("world", [Fun("!in!", [ch; r]); recipize_h w kb])
 	    | Fun("!out!", [ch]) ->
 		Fun("world", [t; recipize_h w kb])
+        | Fun("!guess!", [g]) -> ( 
+        Fun("world", [t; recipize_h w kb]) )
 	    | Fun("!test!", []) ->
 		Fun("world", [t; recipize_h w kb])
 	    | _ -> invalid_arg("recipize_h")
@@ -1453,7 +1860,7 @@ let checks_reach kb =
 (** Extract all successful identity tests from a knowledge base. *)
 let checks_ridentical kb =
   Base.fold_solved
-    (fun x checks -> 
+    (fun x checks ->
        match (get_head x) with
          | Predicate("ridentical", [w; r; rp]) ->
              let sigma = namify_subst w in
@@ -1478,6 +1885,79 @@ let checks_ridentical kb =
 let checks  kb =
   List.append (checks_reach kb) (checks_ridentical kb)
 
+let rec guess_list_in_world w =
+  match w with 
+    | Fun("empty", []) -> []
+    | Fun("world", [t; wr]) -> ( 
+        match t with
+    | Fun("!guess!", [g]) -> g::(guess_list_in_world wr)
+    | _ -> (guess_list_in_world wr)
+          )
+    | _ -> invalid_arg("recipize_h")
+
+let rec guess_recipe_pairs rl = 
+  match rl with 
+    | r1::(r2::tl) -> (r1,r2)::(guess_recipe_pairs tl)
+    | _ -> []
+
+let guess_recipes w rl = 
+  List.map2 (fun x y ->  (x,y)) (guess_list_in_world w) (guess_recipe_pairs rl)
+
+
+let checks_guess_reachability (is_guess : bool) kb trace_size = 
+  if is_guess then ( 
+    Base.fold_ri_size trace_size 
+      (fun x checks -> 
+         match (get_head x) with
+           | Predicate("eridentical", w::rl) ->
+               begin
+                 debugOutput "TESTER: %s\n" (show_statement x);
+                 let sigma = namify_subst w in
+                 let new_w = revworld (recipize (apply_subst w sigma) kb) in
+                 let omega =
+                   List.map
+                     (function
+                        | Predicate("knows", [_; Var(vX); Var(vx)]) 
+                        | Predicate("knows+", [_; Var(vX); Var(vx)]) -> 
+                            (vX, apply_subst (Var(vx)) sigma)
+                        | _ -> invalid_arg("checks_eridentical"))
+                     (get_body x)
+                 in
+                 let resulting_test = (new_w, guess_recipes new_w (List.map (fun x -> apply_subst x omega) rl)) in
+                   resulting_test :: checks
+               end
+
+
+            | _ -> checks
+      )
+      kb []
+  )
+  else
+    begin
+      Base.fold_r_size trace_size 
+        (fun x checks -> 
+           Printf.printf "----------------------------\n";
+           match (get_head x) with
+             | Predicate("reach", [w]) ->
+                 let sigma = namify_subst w in 
+                 let new_w = revworld (recipize (apply_subst w sigma) kb) in
+                 (* let omega =
+                   List.map
+                     (
+                       function
+                        | Predicate("knows", [_; Var(vX); Var(vx)]) 
+                        | Predicate("knows+", [_; Var(vX); Var(vx)]) -> 
+                            (vX, apply_subst (Var(vx)) sigma)
+                        | _ -> invalid_arg("checks_reach")
+                     )
+                     (get_body x)
+                 in *)
+                 let resulting_tests = (new_w, []) in resulting_tests::checks
+             | _ -> checks
+        ) kb []
+
+  end
+
 let show_tests tests =
   String.concat "\n" (trmap show_term tests)
 
@@ -1489,5 +1969,3 @@ let show_rew_rules rules =
 	| (l, r) -> (show_term l)^" -> "^(show_term r);
     )
     rules)
-
-	
