@@ -139,6 +139,10 @@ let rec variables_of_trace t =
         let xs1 = variables_of_term t1 in
         let xs2 = variables_of_term t2 in
         StringSet.(union fvs (union xs1 xs2)), bvs
+     | NTest (t1, t2) ->
+        let xs1 = variables_of_term t1 in
+        let xs2 = variables_of_term t2 in
+        StringSet.(union fvs (union xs1 xs2)), bvs
      | Event ->  StringSet.(fvs), bvs
 
 let check_free_variables t =
@@ -635,7 +639,6 @@ let processCommand = function
   | DeclProcess(name, process) ->
     verboseOutput "Declaring process %s\n%!" name;
     declare_process name process
-
   | QueryNegatable (expected, NegEquivalent (traceList1, traceList2)) ->
     query ~expected traceList1 traceList2
   | QueryNegatable (expected, NegSquare (traceList1, traceList2)) ->

@@ -1,0 +1,7 @@
+weaknames g;
+channels C;
+var X;
+
+r = out(C,g).in(C,X).[X != g].guess(g).event.out(C,g).0;
+
+guess_print r;

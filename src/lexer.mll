@@ -76,6 +76,7 @@ rule token = parse
     | "evrewrite" { EvRewrite }
     | "->" { Arrow }
     | "=" { Equals }
+    | "!=" { NEquals }
     | "out" { Out }
     | "in" { In }
     | "guess" { Guess }

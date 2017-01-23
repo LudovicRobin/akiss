@@ -80,6 +80,7 @@ let apply_shift_rule = Theory.xor
 
 (* Use of Conseq *)
 let use_conseq = (not Theory.xor) || true
+let use_conseq_guess = (not Theory.guess) || true 
 
 let print_flags () =
   (*assert (not Theory.ac || Theory.xor) ;*)
@@ -194,6 +195,7 @@ let is_solved_body body =
     body
 let is_solved {body} = is_solved_body body
 
+
 let rec vars_of_atom = function
   | Predicate(_, term_list) -> vars_of_term_list term_list
 
@@ -228,6 +230,10 @@ let is_extended atom = match atom with
   | Predicate("knows", _) -> false
   | Predicate("knows+", _) -> true
   | _ -> invalid_arg(Printf.sprintf "is_extended") 
+
+let is_well_formed {head} = match get_term head with 
+  | Var(_) -> false 
+  | _ -> true 
 
 let make_extended atom = match atom with
   | Predicate("knows", r) -> Predicate("knows+", r)
@@ -751,10 +757,11 @@ let canonical_form statement =
 let is_same_t_smaller_w atom1 atom2 = match (atom1, atom2) with
   | (Predicate(k1, [w; _; t]), Predicate(k2, [wp; _; tp])) 
       when (k1 = "knows" || k1 = "knows+") 
-      && (k2 = "knows" || k2 = "knows+") 
-      && not(k1 = "knows" && k2 = "knows+") ->
+      && (k2 = "knows" || k2 = "knows+") ->
       (is_prefix_world wp w) && (t = tp)
-  | _ -> invalid_arg("is_same_t_smaller_w")
+    | (Predicate("knows", [w; _; t]), Predicate("knows+", [wp; _; tp])) -> 
+        false
+    | _ -> invalid_arg("is_same_t_smaller_w")
 
 exception Not_a_consequence
 
@@ -825,7 +832,7 @@ let consequence st kb rules =
   assert (is_solved st) ;
   let rec aux { head = head ; body = body } kb =
     match head with
-      | Predicate("knows", [_; _; Fun(name, [])]) when (startswith name "!n!") ->
+      | Predicate(k, [_; _; Fun(name, [])]) when (startswith name "!n!") && (k = "knows" || k = "knows+") ->
           `Public_name, Fun(name, [])
       | Predicate("knows", [w; _; t])
       | Predicate("knows+", [w; _; t]) ->
@@ -1065,7 +1072,7 @@ let ext_update (kb : Base.t) rules (f : statement) : unit =
   with None -> () | Some fc ->
 
   if drop_reflexive && is_reflexive fc then () else
-  if is_ext_deduction_st fc && is_solved fc && not vip && use_conseq then
+  if is_ext_deduction_st fc && is_solved fc && not vip && use_conseq && ((not Theory.guess) || use_conseq_guess) then
     try
       let recipe = consequence fc kb rules in
       let world = get_world fc.head in
@@ -1083,14 +1090,52 @@ let ext_update (kb : Base.t) rules (f : statement) : unit =
           (show_statement f)
           (show_statement newclause);
         if not (drop_reflexive && is_reflexive newclause) then
+          (
           Base.add newclause rules kb
+          )
     with Not_a_consequence ->
       (* If we ran conseq, no need to check whether the clause is already
        * in the knowledge base.
        * This optim seems incorrect with xor. TODO make sure why. *)
       Base.add ~needs_check:Theory.xor fc rules kb
-  else
-    Base.add fc rules kb
+      else
+        (
+          if (Theory.guess && (not use_conseq_guess) &&
+              is_ext_deduction_st fc && 
+              is_solved fc && 
+              not (is_well_formed fc) &&
+              not vip) then 
+            (
+              Printf.printf "youyou\n%!";
+            let t = get_term fc.head in
+            let frecipe {body} t = (List.fold_left (fun a x -> 
+                                                     if get_term x = t then 
+                                                       (get_recipe x)
+                                                     else a 
+            ) (Fun("", [])) body) in
+            let recipe = frecipe fc t in
+        let world = get_world fc.head in
+      let newhead =
+        Predicate("eidentical", [world; get_recipe fc.head; recipe])
+      in
+      let newclause = normalize_identical { fc with head = newhead } in
+        (* No need to freshen [newclause], since it has the same variables as
+         * [fc] which is fresh. *)
+        debugOutput
+          "Useless: %s\n\
+           Original form: %s\n\
+           Replaced by: %s\n\n%!"
+          (show_statement fc)
+          (show_statement f)
+          (show_statement newclause);
+        if not (drop_reflexive && is_reflexive newclause) then
+          (
+          Base.add newclause rules kb
+          )
+            )
+          else
+            Base.add fc rules kb
+        )
 
 
 
@@ -1470,7 +1515,6 @@ let ext_equation fa fb =
            Predicate(k2, [upl; rp; tp])) 
             when (k1 = "knows" || k1 = "knows+") 
             && (k2 = "knows" || k2 = "knows+")
-            && r <> rp
           ->
             debugOutput "Equation:\n %s\n %s\n%!"
               (show_statement fa) (show_statement fb) ;
@@ -1536,11 +1580,7 @@ let ext_equation fa fb =
                   (String.concat ","
                      (List.map (fun st -> "#"^string_of_int st.id) clauses)) ;
               clauses
-        | (Predicate(k1, [ul; r; t]),
-           Predicate(k2, [upl; rp; tp])) 
-            when (k1 = "knows" || k1 = "knows+") 
-            && (k2 = "knows" || k2 = "knows+") -> []
-          | _ -> invalid_arg("ext_equation")
+        | _ -> invalid_arg("ext_equation")
     else
       []
 

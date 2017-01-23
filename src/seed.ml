@@ -137,6 +137,14 @@ let rec trace_statements_h oc tr rules substitutions body world clauses =
 			  body)  in
 	trace_statements_h oc remaining_trace rules next_substitutions body
 	  next_world ((trace_equationalize new_reach rules next_substitutions) @ clauses)
+    | Trace(NTest(s, t), remaining_trace) ->
+    	let next_world = worldadd world (Fun("!test!", [])) in
+	let new_reach = (Predicate(
+			    "reach",
+			    [next_world]),
+			  body)  in
+	trace_statements_h oc remaining_trace rules substitutions body
+	  next_world ((trace_equationalize new_reach rules substitutions) @ clauses)
     | Trace(Guess(g), remaining_trace) ->
         let next_world = worldadd world (Fun("!guess!", [g])) in
         let next_head = Predicate("knows",

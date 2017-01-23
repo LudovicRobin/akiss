@@ -25,6 +25,7 @@ type action =
   | Input of id * id
   | Output of id * term
   | Test of term * term
+  | NTest of term * term
   | Guess of term
   | Event
 
@@ -41,6 +42,7 @@ type symbProcess
 val str_of_tr : term option -> varName
 val show_frame : term list -> string
 val show_trace : trace -> string
+val show_symb : symbProcess -> string
 
 (** {3 Parsing} *)
 

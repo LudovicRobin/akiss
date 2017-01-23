@@ -31,6 +31,7 @@ type action =
   | Input of id * id
   | Output of id * term
   | Test of term * term
+  | NTest of term * term
   | Guess of term
   | Event 
 ;;
@@ -40,6 +41,7 @@ let is_io_action a =
   | Input(_,_)
   | Output(_,_) -> true
   | Test (_,_) -> false
+  | NTest (_,_) -> false
   | Guess(_) -> true 
   | Event -> false
       
@@ -48,6 +50,7 @@ let remove_term_in_io_action a =
   | Input(c,_) -> Input(c,"")
   | Output(c,_) -> Output(c,Var(""))
   | Test(t1,t2) -> Test(t1,t2)
+  | NTest(t1,t2) -> NTest(t1,t2)
   | Guess(g) -> Guess(g)
   | Event -> Event
     
@@ -135,6 +138,7 @@ let show_action = function
   | Input(ch, x) -> Printf.sprintf "in(%s,%s)" ch x
   | Output(ch, t) -> Printf.sprintf "out(%s,%s)" ch (show_term t)
   | Test(s,t) -> Printf.sprintf "[%s=%s]" (show_term s) (show_term t)
+  | NTest(s,t) -> Printf.sprintf "[%s!/=%s]" (show_term s) (show_term t)
   | Guess(g) -> Printf.sprintf "guess(%s)" (show_term g)
   | Event -> Printf.sprintf "event" 
 ;;
@@ -177,6 +181,7 @@ let rec parse_action = function
     else
       Printf.ksprintf failwith "Undeclared channel: %s" ch
   | TempActionTest(s, t) -> Test(parse_term s, parse_term t)
+  | TempActionNTest(s, t) -> NTest(parse_term s, parse_term t)
   | TempActionGuess(t) -> Guess(parse_term t) 
   | TempActionEvent -> Event
 ;;
@@ -239,6 +244,10 @@ let replace_var_in_act x t a =
      let term1 = replace_var_in_term x t term1 in
      let term2 = replace_var_in_term x t term2 in
      Test (term1, term2)
+  | NTest (term1, term2) ->
+     let term1 = replace_var_in_term x t term1 in
+     let term2 = replace_var_in_term x t term2 in
+     NTest (term1, term2)
   | Event -> Event
 
 let rec replace_var_in_symb x t p =
@@ -312,8 +321,8 @@ let rec simplify = function
   | SymbPhase _ as p -> p
 
 let rec optimize_tests p =
-  if Theory.privchannels = []
-  then unlinearize SymbNul (compress_tests [] [] (linearize p))
+  if not Theory.guess
+  then (Printf.printf "$$$$$$$$$$$$ OPTIMIZE TESTS\n%!"; unlinearize SymbNul (compress_tests [] [] (linearize p)))
   else p
 (* this optimization is currently disabled in the presence of private
    channels as it creates a bug in the pre-treatment: tests before a
@@ -335,6 +344,8 @@ and unlinearize res = function
 and compress_tests res accu = function
   | [] -> if accu = [] then res else SymbAct accu :: res
   | SymbAct [Test (_, _) as a] :: xs ->
+     compress_tests res (a :: accu) xs
+  | SymbAct [NTest (_, _) as a] :: xs ->
      compress_tests res (a :: accu) xs
   | SymbAct [Input (_, _) | Output (_, _) as a] :: xs ->
      compress_tests (SymbAct (a :: accu) :: res) [] xs
@@ -375,6 +386,7 @@ type action_classification =
 let classify_action = function
   | [] -> assert false
   | Test (_, _) :: _ -> PublicAction
+  | NTest (_, _) :: _ -> PublicAction
   | Input (c, x) :: _ ->
      if List.mem c Theory.privchannels
      then PrivateInput (c, x) else PublicAction
@@ -460,7 +472,8 @@ let traces_por p =
                 traces (q1::q2::async) sync
             | SymbSeq (SymbAct [Output (c,t) as a], q) ->
                 prepend_traces a (traces (q::async) sync)
-            | SymbSeq (SymbAct [Test (t,t') as a], q) ->
+            | SymbSeq (SymbAct [Test (t,t') as a], q) 
+            | SymbSeq (SymbAct [NTest (t,t') as a], q) ->
                 TraceSet.union
                   (prepend_traces a (traces (q::async) sync))
                   (traces async sync)
@@ -476,7 +489,8 @@ let traces_por p =
             match canonize p with
               | SymbSeq (SymbAct [Input (c,x) as a], q) ->
                   prepend_traces a (focus q sync)
-              | SymbSeq (SymbAct [Test (t,t') as a], q) ->
+              | SymbSeq (SymbAct [Test (t,t') as a], q) 
+              | SymbSeq (SymbAct [NTest (t,t') as a], q) ->
                   (* In case the test fails, the continuation is null
                    * so we have an improper block: no need to explore further
                    * traces. *)
@@ -533,7 +547,7 @@ let traces p =
   TraceSet.elements @@ traces @@ simplify @@ optimize_tests p
 
 let parse_process p ps =
-  simplify @@ symb_of_temp p ps
+  (simplify @@ symb_of_temp p ps)
 
 (** {2 Executing and testing processes} *)
 
@@ -606,6 +620,8 @@ let rec apply_subst_tr pr sigma = match pr with
       Trace(Input(ch, x), apply_subst_tr rest sigma)
   | Trace(Test(x, y), rest) ->
     Trace(Test(apply_subst x sigma, apply_subst y sigma), apply_subst_tr rest sigma)
+  | Trace(NTest(x, y), rest) ->
+    Trace(NTest(apply_subst x sigma, apply_subst y sigma), apply_subst_tr rest sigma)
   | Trace(Output(ch, x), rest) ->
     Trace(Output(ch, apply_subst x sigma), apply_subst_tr rest sigma)
   | Trace(Guess(x), rest) ->
@@ -631,6 +647,7 @@ let rec execute_h_dumb process instructions =
 	  else
 	   false
       | (Trace(Test(x, y), pr), Fun("world", _)) -> execute_h_dumb pr instructions
+      | (Trace(NTest(x, y), pr), Fun("world", _)) -> execute_h_dumb pr instructions
       | (Trace(Output(ch, x), pr), Fun("world", [Fun("!out!", [chp]); ir])) ->
 	  if chp = Fun(ch, []) then
 	    execute_h_dumb pr ir 
@@ -644,11 +661,6 @@ let rec execute_h_dumb process instructions =
 
 let rec execute_h process frame instructions rules =
   (
-    (* debugOutput *)
-    (*   "Executing: %s\nFrame: %s\nInstructions: %s\n\n%!" *)
-    (*   (show_trace process) *)
-    (*   (show_term_list frame) *)
-    (*   (show_term_list instructions); *)
     match (process, instructions) with
       | (NullTrace, Fun("empty", [])) -> frame
       | (NullTrace, _) -> raise Too_many_instructions
@@ -659,10 +671,15 @@ let rec execute_h process frame instructions rules =
 	  else
 	    raise Invalid_instruction
       | (Trace(Test(x, y), pr), Fun("world", _)) ->
-	  if R.equals x y rules then
-	    execute_h pr frame instructions rules
-	  else
-	    raise Process_blocked
+          if R.equals x y rules then
+            execute_h pr frame instructions rules
+          else
+            raise Process_blocked
+      | (Trace(NTest(x, y), pr), Fun("world", _)) ->
+          if not (R.equals x y rules) then
+            execute_h pr frame instructions rules
+          else
+            raise Process_blocked
       | (Trace(Output(ch, x), pr), Fun("world", [Fun("!out!", [chp]); ir])) ->
 	  if chp = Fun(ch, []) then
 	    execute_h pr (List.append frame [x]) ir rules
@@ -810,11 +827,11 @@ let check_guess_reachability process test_gr rules = match test_gr with
           (guess_checked)
             end
         with 
-          | Process_blocked -> Printf.printf "1\n%!"; false
-          | Too_many_instructions ->Printf.printf "2\n%!"; false
-          | Not_a_recipe ->Printf.printf "3\n%!"; false
-          | Invalid_instruction ->Printf.printf "4\n%!"; false
-          | Bound_variable ->Printf.printf "5\n%!"; invalid_arg("the process binds twice the same variable")
+          | Process_blocked -> false
+          | Too_many_instructions -> false
+          | Not_a_recipe -> false
+          | Invalid_instruction -> false
+          | Bound_variable -> invalid_arg("the process binds twice the same variable")
       )
 
 

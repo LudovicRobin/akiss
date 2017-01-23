@@ -34,6 +34,7 @@ let jobs = ref 1
   *   id(X,0). *)
 let ac = ref false
 let xor = ref false
+let guess = ref false 
 
 let ac_toolbox = ref false
 let tamarin_variants = ref false
@@ -210,6 +211,7 @@ let process_decl = function
     check_atoms ()
   | DeclWeakNames nameList ->
     verboseOutput "Declaring weak names\n%!";
+    guess := true;
     declare_weaknames nameList;
     check_atoms ();
   | DeclPrivate nameList ->
@@ -263,6 +265,7 @@ let () =
 let dotfile = !dotfile
 let jobs = !jobs
 let xor = !xor
+let guess = !guess
 let ac = !ac
 let set_por b = por:= b
 let disable_por = !disable_por

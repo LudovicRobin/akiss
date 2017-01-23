@@ -30,7 +30,7 @@ open Ast
 %token PrivChannels
 %token WeakNames
 %token LeftP RightP LeftB RightB
-%token Arrow Equals Dot Slash Comma Semicolon
+%token Arrow Equals NEquals Dot Slash Comma Semicolon
 %token Out In And Zero Plus Guess
 %token Ev
 %token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct GuessReach
@@ -112,6 +112,7 @@ main:
  | In LeftP Identifier Comma Identifier RightP { TempActionIn($3, $5) }
  | Out LeftP Identifier Comma term RightP { TempActionOut($3, $5) }
  | LeftB term Equals term RightB { TempActionTest ($2, $4) }
+ | LeftB term NEquals term RightB { TempActionNTest ($2, $4) }
  | Guess LeftP term RightP { TempActionGuess($3) } 
  | Ev { TempActionEvent }
 

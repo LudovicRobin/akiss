@@ -71,7 +71,8 @@ TESTS = \
   ../examples/guess/misc/g7.api \
   ../examples/guess/misc/g8.api \
   ../examples/guess/misc/g9.api \
-  ../examples/guess/misc/ge1.api 
+  ../examples/guess/misc/ge1.api \
+  ../examples/guess/misc/gde1.api 
 
 # Basic tests + RFID tests without Toy-v1 + NSLxor tests,
 # without duplicates

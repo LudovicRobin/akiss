@@ -28,6 +28,7 @@ val dotfile : string option
 val jobs : int
 val cmdlist : Ast.cmd list
 val xor : bool
+val guess: bool
 val ac : bool
 val por : bool ref
 val disable_por : bool

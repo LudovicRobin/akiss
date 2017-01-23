@@ -24,6 +24,7 @@ type tempAction =
   | TempActionIn of string * string
   | TempActionOut of string * tempTerm
   | TempActionTest of tempTerm * tempTerm
+  | TempActionNTest of tempTerm * tempTerm
   | TempActionGuess of tempTerm
   | TempActionEvent 
 
