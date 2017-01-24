@@ -1,0 +1,28 @@
+/*
+    Manual authentication 6
+*/
+
+symbols g/2, h/1, OK/0, pair/2, fst/1, snd/1, dd/0, BADSTATE/0;
+
+private d,n;
+weaknames r;
+channels C;
+privchannels O1,O2,O3;
+var X, Y, X1, X2, Y1, Y2, Yn;
+
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1. A->B  : d, h(d,n,r) */
+/* 2. B=>A  : ACK */
+/* 3. A->B  : n, r */
+/* 5. B=>A  : r */
+
+Alice = out(C,pair(d,h(pair(pair(d,n),r)))).in(O1,X1).out(C,n).out(C,r).in(O2,X2).[r =
+X2]; 
+
+Bob = in(C,Y1).(out(O1,OK) || out(C,OK).in(C,Yn).in(C,Y2).[h(pair(fst(Y1),pair(Yn,Y2))) = snd(Y1)].(out(O2,Y2) || out(C,Y2)));
+
+P = (Alice || Bob)::[fst(Y1) != d].out(C,BADSTATE);
+
+guessreachable? P;

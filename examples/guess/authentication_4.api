@@ -1,0 +1,34 @@
+/*
+   Manual authentication 4 
+*/
+
+symbols g/2, h/1, OK/0, pair/2, fst/1, snd/1, dd/0, BADSTATE/0, READY/0, START/0;
+
+private d,n;
+weaknames r;
+channels C;
+privchannels OAH, OHA, OBH, OHB;
+var X, Y, X1, X2, Y1, Y2, Y3, Z1, Z2, Z3, Z4;
+
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1. A->B  : d, h(pair(pair(d,n),r)) */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 4. H=>A  : START */
+/* 5. A=>H  : r */
+/* 6. H=>B  : r */
+/* 7. A->B  : n */
+/* 8. B=>H  : OK */
+
+
+Alice = out(C,pair(d,h(pair(pair(d,n),r)))).(out(OAH, READY) || out(C,READY).in(OHA,X1).[X1=START].(out(OAH,r) || out(C,r).out(C,n).in(OHA,X2).[X2=OK]));
+
+Bob = in(C,Y1).(out(OBH, READY) || out(C,READY).in(OHB,Y2).in(C,Y3).[h(pair(pair(fst(Y1),Y3),Y2))=snd(Y1)].out(OBH,OK));
+
+H = in(OAH,Z1).in(OBH,Z2).[Z1=READY].[Z2=READY].(out(OHA,START) || out(C,START).in(OAH,Z3).(out(OHB,Z3) || out(C,Z3).in(OBH,Z4).[Z4=OK].out(OHA,OK)));
+
+P = (Alice || Bob || H)::[fst(Y1) != d].out(C,BADSTATE);
+
+guessreachable? P;

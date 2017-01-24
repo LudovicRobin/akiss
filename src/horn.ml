@@ -1825,10 +1825,10 @@ let rec recipize_h (tl : term) kb =
         Fun("world", [t; recipize_h w kb]) )
 	    | Fun("!test!", []) ->
 		Fun("world", [t; recipize_h w kb])
-	    | _ -> invalid_arg("recipize_h")
+	    | _ -> Printf.printf "-%s-\n%!" (show_term tl); invalid_arg("recipize_h")
 	)
     | Var(_) -> invalid_arg("recipize_h with var")
-    | _ -> invalid_arg("recipize_h")
+    | _ -> Printf.printf "-%s-\n%!" (show_term tl); invalid_arg("recipize_h")
 
 let recipize tl kb =
   debugOutput "Recipizing %s\n" (show_term tl);
@@ -1933,7 +1933,7 @@ let rec guess_list_in_world w =
     | Fun("!guess!", [g]) -> g::(guess_list_in_world wr)
     | _ -> (guess_list_in_world wr)
           )
-    | _ -> invalid_arg("recipize_h")
+    | _ -> Printf.printf "-%s-\n%!" (show_term w); invalid_arg("recipize_h")
 
 let rec guess_recipe_pairs rl = 
   match rl with 
@@ -1976,7 +1976,6 @@ let checks_guess_reachability (is_guess : bool) kb trace_size =
     begin
       Base.fold_r_size trace_size 
         (fun x checks -> 
-           Printf.printf "----------------------------\n";
            match (get_head x) with
              | Predicate("reach", [w]) ->
                  let sigma = namify_subst w in 

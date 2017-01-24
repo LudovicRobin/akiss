@@ -1,0 +1,34 @@
+/*
+   Manual authentication 5 
+*/
+
+symbols short/2, bruteforce/2, g/2, h/1, OK/0, pair/2, fst/1, snd/1, dd/0,
+BADSTATE/0, ACK/0;
+
+private d,n,k;
+channels C;
+privchannels O, O1,O2,O3;
+var x, X, Y, X1, X2, Y1, Y2, Yn;
+
+rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
+rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1. A->B  : d, h(k) */
+/* 2. B=>A  : ACK */
+/* 3. A->B  : k */
+/* 4. A=>H  : short(d,h(k)) */
+/* 5. B=>H  : short(d,h(k)) */
+
+Alice = out(C,pair(d,h(k))).in(O,x).out(C,k).(out(O,short(d,h(k))) ||
+out(C,short(d,h(k))));
+
+Bob = in(C,X).(out(O, ACK) || (out(C,ACK).in(C,Y).[h(Y)=snd(X)].(out(O,short(fst(X),h(Y))) ||
+out(C,short(d,h(k))))));
+
+Hubert = in(O,X1).in(O,X2);
+
+P = (Alice || Bob || Hubert)::[X!=d].[X1 = X2].out(C,BADSTATE);
+
+guessreachable? P;

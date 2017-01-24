@@ -274,6 +274,7 @@ let rec replace_var_in_symb x t p =
 let rec symb_of_temp process processes =
   match process with
   | TempEmpty -> SymbNul
+  | TempAction(TempActionEvent) -> SymbNul
   | TempAction a -> SymbAct [parse_action a]
   | TempSequence (TempAction(TempActionEvent), p2) -> SymbNul
   | TempSequence (p1, p2) ->
@@ -322,7 +323,7 @@ let rec simplify = function
 
 let rec optimize_tests p =
   if not Theory.guess
-  then (Printf.printf "$$$$$$$$$$$$ OPTIMIZE TESTS\n%!"; unlinearize SymbNul (compress_tests [] [] (linearize p)))
+  then (unlinearize SymbNul (compress_tests [] [] (linearize p)))
   else p
 (* this optimization is currently disabled in the presence of private
    channels as it creates a bug in the pre-treatment: tests before a

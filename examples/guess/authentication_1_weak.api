@@ -6,7 +6,7 @@ symbols d/0, dd/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1, BADSTATE/
 
 weaknames k;
 channels C;
-privchannels O;
+privchannels O1,O2,O3,O;
 var X, Y, X1, X2, Y1, Y2, Yn, x, y;
 
 rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
@@ -15,12 +15,12 @@ rewrite fst(pair(X,Y)) -> X;
 rewrite snd(pair(X,Y)) -> Y;
 
 /* 1. A->B  : d */
-/* 2. B=>A  : ACK */
-/* 3. A=>B  : short(d,k),k */
+/* 2. A=>B  : short(d,k),k */
+/* 3. B=>A  : ACK */
 
-Alice = out(C,d).in(O,X).(out(O,pair(short(d,k),k)) || out(C,pair(short(d,k),k)));
+Alice = out(C,d).(out(O,pair(short(d,k),k)) || out(C,pair(short(d,k),k)).in(O,X));
 
-Bob = in(C,x).(out(O,ACK) || out(C,ACK).in(O,y).[short(x,snd(y))=fst(y)]);
+Bob = in(C,x).in(O,y).(out(O,ACK) || out(C,ACK).[short(x,snd(y))=fst(y)]);
 
 P = (Alice || Bob)::[x!=d].event; 
 PP = (Alice || Bob); 
