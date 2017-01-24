@@ -274,7 +274,6 @@ let rec replace_var_in_symb x t p =
 let rec symb_of_temp process processes =
   match process with
   | TempEmpty -> SymbNul
-  | TempAction(TempActionEvent) -> SymbNul
   | TempAction a -> SymbAct [parse_action a]
   | TempSequence (TempAction(TempActionEvent), p2) -> SymbNul
   | TempSequence (p1, p2) ->
@@ -656,6 +655,8 @@ let rec execute_h_dumb process instructions =
 	   false 
       | (Trace(Guess(g), pr), Fun("world", [Fun("!guess!", [gg]); ir])) ->
 	    execute_h_dumb pr ir 
+      | (Trace(Event, pr), Fun("world", [Fun("!event!", []); ir])) ->
+	    execute_h_dumb pr ir 
       | _ ->  false
   )
 ;;
@@ -688,6 +689,8 @@ let rec execute_h process frame instructions rules =
 	    raise Invalid_instruction
       | (Trace(Guess(g), pr), Fun("world", [Fun("!guess!", [gg]); ir])) ->
 	    execute_h pr (List.append frame [g]) ir rules
+      | (Trace(Event, pr), Fun("world", [Fun("!event!", []); ir])) ->
+	    execute_h pr frame ir rules
       | _ -> raise Invalid_instruction
   )
 ;;

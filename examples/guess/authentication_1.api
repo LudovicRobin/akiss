@@ -23,6 +23,5 @@ Alice = out(C,d).in(O,X).(out(O,pair(short(d,k),k)) || out(C,pair(short(d,k),k))
 Bob = in(C,x).(out(O,ACK) || out(C,ACK).in(O,y).[short(x,snd(y))=fst(y)]);
 
 P = (Alice || Bob)::[x!=d].event; 
-PP = (Alice || Bob); 
 
 guessreachable? P;

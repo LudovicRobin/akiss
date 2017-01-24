@@ -1825,6 +1825,8 @@ let rec recipize_h (tl : term) kb =
         Fun("world", [t; recipize_h w kb]) )
 	    | Fun("!test!", []) ->
 		Fun("world", [t; recipize_h w kb])
+	    | Fun("!event!", []) ->
+		Fun("world", [t; recipize_h w kb])
 	    | _ -> Printf.printf "-%s-\n%!" (show_term tl); invalid_arg("recipize_h")
 	)
     | Var(_) -> invalid_arg("recipize_h with var")
