@@ -2,7 +2,7 @@
    Manual authentication 1 
 */
 
-symbols d/0, dd/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1, BADSTATE/0;
+symbols d/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1;
 
 weaknames k;
 channels C;
@@ -23,6 +23,5 @@ Alice = out(C,d).(out(O,pair(short(d,k),k)) || in(O,X));
 Bob = in(C,x).in(O,y).(out(O,ACK) || out(C,ACK).[short(x,snd(y))=fst(y)]);
 
 P = (Alice || Bob)::[x!=d].event; 
-PP = (Alice || Bob); 
 
 guessreachable? P;

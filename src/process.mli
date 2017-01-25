@@ -61,6 +61,7 @@ exception Too_many_instructions
 val trace_size : trace -> int
 val trace_size_ign_guess : trace -> int
 val is_trace_auto_guess : trace -> bool
+val is_trace_contains_event : trace -> bool 
 val trace_guess_enhance : trace -> trace list
 val trace_contains_guess : trace -> bool
 val execute : trace -> term list -> term -> rules -> term list

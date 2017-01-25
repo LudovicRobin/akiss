@@ -236,18 +236,19 @@ let query_guess_reach ?(expected=true) t =
     "Checking if at least one of the following traces is %sguess-reachable.\n%s\n%!"
     (if expected then "" else "not ") (show_string_list t);
     let ttraces = List.concat (List.map (fun x -> traces @@ List.assoc x !processes) t) in
-    let ttraces = if List.exists (fun t -> not (is_trace_auto_guess t)) ttraces
+    let ttraces = if List.exists (fun x -> is_trace_contains_event x) ttraces then 
+                  List.filter (fun x -> is_trace_contains_event x) ttraces
+               else (
+                 let maxTraceSize = List.fold_left (fun max x -> if Process.trace_size_ign_guess x > max then Process.trace_size_ign_guess x else max) 0 ttraces in
+                 List.filter (fun x -> Process.trace_size_ign_guess x = maxTraceSize) ttraces
+               ) in
+    let ttraces = if (List.exists (fun t -> not (is_trace_auto_guess t)) ttraces)
     then ( ttraces ) 
-    else (
-      List.fold_left 
+    else ( (List.fold_left 
         (fun tl t -> (trace_guess_enhance t)@tl) 
-                      [] ttraces )
+                      [] ttraces ))
        in
-
-    let maxTraceSize = List.fold_left (fun max x -> if Process.trace_size_ign_guess x > max then Process.trace_size_ign_guess x else max) 0 ttraces in
-    let ttraces = List.filter (fun x -> Process.trace_size_ign_guess x = maxTraceSize) ttraces in
-
-    verboseOutput "Traces to check:\n===\n"; 
+        verboseOutput "Traces to check:\n===\n"; 
     List.iter (fun t -> verboseOutput "%s\n\n" (show_trace t)) ttraces;
 
     let () = List.iter check_free_variables ttraces in

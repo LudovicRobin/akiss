@@ -2,12 +2,12 @@
    Manual authentication 1 
 */
 
-symbols d/0, dd/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1, BADSTATE/0;
+symbols d/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1;
 
 weaknames k;
 channels C;
 privchannels O1,O2,O3,O;
-var X, Y, X1, X2, Y1, Y2, Yn, x, y;
+var X, Y, X1, Y1, x, y;
 
 rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
 rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);

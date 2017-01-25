@@ -85,17 +85,31 @@ let rec is_trace_auto_guess = function
     | Trace(_,tr) -> is_trace_auto_guess tr
     | NullTrace -> true 
 
-let rec trace_guess_enhance_h (wname : action) (trace : trace) : trace list = 
+let rec is_trace_contains_event = function
+    | Trace(Event, _) -> true 
+    | Trace(_,tr) -> is_trace_contains_event tr
+    | NullTrace -> false 
+
+let rec trace_guess_enhance_h (flag : bool) (wname : action) (trace : trace) : trace list = 
   match trace with
+    | Trace(Input(_) as a, tr) ->
+        if flag then 
+            (Trace(wname,Trace(a,tr)))::
+            (List.rev_map 
+               (fun x ->
+                  (trace_append x (Trace(a,NullTrace))))
+               (trace_guess_enhance_h false wname tr))
+        else 
+          (Trace(a,tr))::(List.rev_map 
+                          (fun x ->
+                             (trace_append x (Trace(a,NullTrace))))
+                          (trace_guess_enhance_h false wname tr))
     | Trace(Output(_,_) as a,tr) ->
-        (Trace(a,Trace(wname,tr)))::
-        (List.rev_map 
-           (fun x ->
-           (trace_append x (Trace(a,NullTrace))))
-           (trace_guess_enhance_h wname tr))
+        List.rev_map (fun x -> trace_append x (Trace(a,NullTrace)))
+          (trace_guess_enhance_h true wname tr)
     | Trace(a, tr) -> 
         List.rev_map (fun x -> trace_append x (Trace(a,NullTrace)))
-          (trace_guess_enhance_h wname tr)
+          (trace_guess_enhance_h flag wname tr)
     | NullTrace -> [NullTrace]
 
 let trace_guess_enhance t =
@@ -103,7 +117,7 @@ let trace_guess_enhance t =
       (fun tl wn -> 
          let g = Guess(Fun(wn,[])) in 
            (List.fold_left 
-              (fun rtl t -> (trace_guess_enhance_h g t) @ rtl 
+              (fun rtl t -> (trace_guess_enhance_h true g t) @ rtl 
            ) [] tl)
       ) [t] Theory.weaknames
 
