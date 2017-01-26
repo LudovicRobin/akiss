@@ -235,7 +235,7 @@ let query_guess_reach ?(expected=true) t =
   Printf.printf
     "Checking if at least one of the following traces is %sguess-reachable.\n%s\n%!"
     (if expected then "" else "not ") (show_string_list t);
-    let ttraces = List.concat (List.map (fun x -> traces @@ List.assoc x !processes) t) in
+    let ttraces = List.concat (List.rev_map (fun x -> traces @@ List.assoc x !processes) t) in
     let ttraces = if List.exists (fun x -> is_trace_contains_event x) ttraces then 
                   List.filter (fun x -> is_trace_contains_event x) ttraces
                else (

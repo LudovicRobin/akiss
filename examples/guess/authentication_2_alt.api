@@ -39,8 +39,8 @@ Human = in(OAH,xH).in(OBH,yH).[xH = READY].[yH = READY].(out(OHA,
 START) || out(C,START).in(OAH,z1H).in(OBH,z2H).[z1H=z2H].(out(OHB,OK) ||
 out(OHA,OK)));
 
-Monitor = in(OAM,XA).in(OBM,XB).(in(OAM,YA).[YA=OK].[XA != XB].event ||
-in(OBM,YB).[YB=OK].event);
+Monitor = in(OAM,XA).in(OBM,XB).(in(OAM,YA).[XA != XB].event ||
+in(OBM,YB).[XA != XB].event);
 
 P = (Alice || Bob || Human || Monitor);
 
