@@ -16,16 +16,20 @@ rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
 rewrite fst(pair(X,Y)) -> X;
 rewrite snd(pair(X,Y)) -> Y;
 
-/* 1a.  ->A : d */
-/* 1b.  ->B : d */
-/* 2a. A=>H : READY */
-/* 3b. B=>H : READY */
-/*  4. H=>A : START */
-/*  5. A->B : k */
-/*  6. A=>H : short(d,k),k */
-/*  7. B=>H : short(d,k),k */
+/* ->, is used to represent a communication on a public channel */
+/* =>, is used to represent a communication on an out-of-band channel */
+
+/* 1a.   ->A : d */
+/* 1b.   ->B : d */
+/* 2a.  A=>H : READY */
+/* 2b.  B=>H : READY */
+/*  4.  H=>A : START */
+/*  5.  A->B : k */
+/*  6.  A=>H : short(d,k),k */
+/*  7.  B=>H : short(d,k),k */
 /*  H checks if hashes and keys he received are equals */
 
+/* In this protocol, the monitoring agent is used to encode the security property */
 
 Alice = in(C,xA).out(OAM,xA).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
 START].out(C,k).(out(OAH,pair(k,short(k,xA))) ||
@@ -39,8 +43,10 @@ Human = in(OAH,xH).in(OBH,yH).[xH = READY].[yH = READY].(out(OHA,
 START) || out(C,START).in(OAH,z1H).in(OBH,z2H).[z1H=z2H].(out(OHB,OK) ||
 out(OHA,OK)));
 
-Monitor = in(OAM,XA).in(OBM,XB).(in(OAM,YA).[YA=OK].[XA != XB].event ||
-in(OBM,YB).[YB=OK].event);
+Monitor = in(OAM,XA).in(OBM,XB).(
+	in(OAM,YA).[XA != XB].event ||
+	in(OBM,YB).[XA != XB].event
+	);
 
 P = (Alice || Bob || Human || Monitor);
 
