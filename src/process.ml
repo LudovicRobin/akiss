@@ -25,6 +25,8 @@ open Horn
 
 module R = Theory.R
 
+let only_reachability = ref false
+
 (** {2 Processes} *)
 
 type action = 
@@ -420,13 +422,23 @@ let rec trace_prepend a t =
 
 let rec traces p =
   let d = delta p in
-  let r =
-    List.fold_left (fun accu (a, q) ->
-      match classify_action a with
-      | PublicAction ->
-         TraceSet.fold (fun q accu ->
-           TraceSet.add (trace_prepend a q) accu
-         ) (traces q) accu
+  let dout = List.filter (fun (a,_) -> match a with Output _::_ -> (classify_action a) = PublicAction | _ -> false) d in
+    if dout <> [] && Theory.guess then (
+      let r = List.fold_left (fun accu (a,q) -> TraceSet.fold (fun q accu -> 
+                               TraceSet.add (trace_prepend a q) accu
+      ) (traces q) accu)
+        TraceSet.empty dout
+      in 
+        if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+    )
+    else (
+      let r =
+        List.fold_left (fun accu (a, q) ->
+                          match classify_action a with
+        | PublicAction ->
+            TraceSet.fold (fun q accu ->
+                             TraceSet.add (trace_prepend a q) accu
+            ) (traces q) accu
       | PrivateInput (_, _) -> accu
       | PrivateOutput (c, t) ->
          List.fold_left (fun accu (a, _) ->
@@ -446,6 +458,7 @@ let rec traces p =
     ) TraceSet.empty d
   in
   if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+  )
 
 (** Computing the set of traces with partial order reduction
   *
