@@ -36,6 +36,8 @@ type action =
   | NTest of term * term
   | Guess of term
   | Event 
+  | Begin of term 
+  | End of term 
 ;;
 
 let is_io_action a =
@@ -46,6 +48,8 @@ let is_io_action a =
   | NTest (_,_) -> false
   | Guess(_) -> true 
   | Event -> false
+  | Begin _ -> false
+  | End _ -> false
       
 let remove_term_in_io_action a =
   match a with
@@ -55,6 +59,8 @@ let remove_term_in_io_action a =
   | NTest(t1,t2) -> NTest(t1,t2)
   | Guess(g) -> Guess(g)
   | Event -> Event
+  | Begin(t) -> Begin(t)
+  | End(t) -> End(t)
     
 module ActionSet = Set.Make( 
   struct
@@ -82,6 +88,11 @@ let rec trace_append ttoadd t =
     | Trace(a, tr) -> Trace(a, trace_append ttoadd tr)
     | NullTrace -> ttoadd
 
+let rec trace_prepend a t =
+  match a with
+  | [] -> t
+  | x :: xs -> trace_prepend xs (Trace (x, t))
+
 let rec is_trace_auto_guess = function
     | Trace(Guess(_), _) -> false 
     | Trace(_,tr) -> is_trace_auto_guess tr
@@ -90,6 +101,12 @@ let rec is_trace_auto_guess = function
 let rec is_trace_contains_event = function
     | Trace(Event, _) -> true 
     | Trace(_,tr) -> is_trace_contains_event tr
+    | NullTrace -> false 
+
+let rec is_trace_contains_begend = function
+    | Trace(Begin(_), _) -> true 
+    | Trace(End(_), _) -> true 
+    | Trace(_,tr) -> is_trace_contains_begend tr
     | NullTrace -> false 
 
 let rec trace_guess_enhance_h (flag : bool) (wname : action) (trace : trace) : trace list = 
@@ -122,6 +139,36 @@ let trace_guess_enhance t =
               (fun rtl t -> (trace_guess_enhance_h true g t) @ rtl 
            ) [] tl)
       ) [t] Theory.weaknames
+
+let rec trace_beg_vars t =
+  match t with 
+    | Trace(Begin(x), tr) -> x::(trace_beg_vars tr)
+    | Trace(_, tr) -> (trace_beg_vars tr)
+    | NullTrace -> [] 
+
+let rec trace_begend_del_begend t = 
+  match t with 
+    | Trace(Begin(x), tr) -> (trace_begend_del_begend tr)
+    | Trace(End(x), tr) -> (trace_begend_del_begend tr)
+    | Trace(a, tr) -> Trace(a,(trace_begend_del_begend tr))
+    | NullTrace -> Trace(Event, NullTrace)
+
+let rec trace_construct_begend_t t t_accu =
+  match t with 
+    | Trace(End(x), tr) -> ((trace_beg_vars t_accu), x, trace_begend_del_begend t_accu)::(trace_construct_begend_t tr t_accu)
+    | Trace(a, tr) -> (trace_construct_begend_t tr (trace_append (Trace(a,NullTrace)) t_accu))
+    | NullTrace -> []
+
+let trace_construct_begend t =
+   (trace_construct_begend_t t NullTrace)
+
+let trace_begend_enhance_not_injective t =
+  let bes = trace_construct_begend t in
+  List.rev_map trace_begend_del_begend (List.rev_map (fun (bv,ev,tt) -> 
+                List.fold_left (fun t_acc x -> 
+                                  trace_append
+                                    (Trace(NTest(x,ev), NullTrace))
+                                    tt) tt bv) bes)
 
 let rec trace_contains_guess = function
     | Trace(Guess(term),_) -> true
@@ -157,6 +204,8 @@ let show_action = function
   | NTest(s,t) -> Printf.sprintf "[%s!/=%s]" (show_term s) (show_term t)
   | Guess(g) -> Printf.sprintf "guess(%s)" (show_term g)
   | Event -> Printf.sprintf "event" 
+  | Begin(t) -> Printf.sprintf "begin(%s)" (show_term t)
+  | End(t) -> Printf.sprintf "end(%s)" (show_term t)
 ;;
 
 let rec show_trace = function
@@ -200,6 +249,8 @@ let rec parse_action = function
   | TempActionNTest(s, t) -> NTest(parse_term s, parse_term t)
   | TempActionGuess(t) -> Guess(parse_term t) 
   | TempActionEvent -> Event
+  | TempActionBegin(t) -> Begin(parse_term t) 
+  | TempActionEnd(t) -> End(parse_term t) 
 ;;
 
 let replace_var_in_term x t term =
@@ -265,6 +316,8 @@ let replace_var_in_act x t a =
      let term2 = replace_var_in_term x t term2 in
      NTest (term1, term2)
   | Event -> Event
+  | Begin(term) -> Begin(replace_var_in_term x t term)  
+  | End(term) -> End(replace_var_in_term x t term)  
 
 let rec replace_var_in_symb x t p =
   match p with
@@ -411,14 +464,11 @@ let classify_action = function
      then PrivateOutput (c, t) else PublicAction
   | Guess (_) :: _ -> PublicAction
   | Event :: _ -> PublicAction
+  | Begin (_):: _ -> PublicAction 
+  | End(_):: _ -> PublicAction 
 
 module Trace = struct type t = trace let compare = Pervasives.compare end
 module TraceSet = Set.Make (Trace)
-
-let rec trace_prepend a t =
-  match a with
-  | [] -> t
-  | x :: xs -> trace_prepend xs (Trace (x, t))
 
 let rec traces p =
   let d = delta p in
@@ -655,6 +705,10 @@ let rec apply_subst_tr pr sigma = match pr with
     Trace(Guess(apply_subst x sigma), apply_subst_tr rest sigma)
   | Trace(Event, rest) ->
     Trace(Event, apply_subst_tr rest sigma)
+  | Trace(Begin(x), rest) ->
+    Trace(Begin(apply_subst x sigma), apply_subst_tr rest sigma)
+  | Trace(End(x), rest) ->
+    Trace(End(apply_subst x sigma), apply_subst_tr rest sigma)
 ;;
 
 let rec execute_h_dumb process instructions =

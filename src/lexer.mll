@@ -81,6 +81,8 @@ rule token = parse
     | "in" { In }
     | "guess" { Guess }
     | "event" { Ev }
+    | "begin" { Beg }
+    | "end" { End }
     | "[" { LeftB }
     | "]" { RightB }
     | "(" { LeftP }

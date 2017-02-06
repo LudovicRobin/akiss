@@ -27,6 +27,8 @@ type tempAction =
   | TempActionNTest of tempTerm * tempTerm
   | TempActionGuess of tempTerm
   | TempActionEvent 
+  | TempActionBegin of tempTerm
+  | TempActionEnd of tempTerm
 
 type tempProcess =
   | TempSequence of tempProcess * tempProcess

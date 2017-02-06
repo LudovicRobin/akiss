@@ -32,7 +32,7 @@ open Ast
 %token LeftP RightP LeftB RightB
 %token Arrow Equals NEquals Dot Slash Comma Semicolon
 %token Out In And Zero Plus Guess
-%token Ev
+%token Ev Beg End
 %token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct GuessReach
 %token Print PrintTraces GuessPrint
 %token InnerSequence InnerInterleave InnerChoice InnerPhase
@@ -115,6 +115,8 @@ main:
  | LeftB term NEquals term RightB { TempActionNTest ($2, $4) }
  | Guess LeftP term RightP { TempActionGuess($3) } 
  | Ev { TempActionEvent }
+ | Beg LeftP term RightP { TempActionBegin $3 }
+ | End LeftP term RightP { TempActionEnd $3 }
 
      term:
  | Identifier { TempTermCons ($1, []) }

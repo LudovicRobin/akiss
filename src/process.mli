@@ -30,6 +30,8 @@ type action =
   | NTest of term * term
   | Guess of term
   | Event
+  | Begin of term 
+  | End of term 
 
 type trace =
   | NullTrace
@@ -64,7 +66,9 @@ val trace_size : trace -> int
 val trace_size_ign_guess : trace -> int
 val is_trace_auto_guess : trace -> bool
 val is_trace_contains_event : trace -> bool 
+val is_trace_contains_begend : trace -> bool 
 val trace_guess_enhance : trace -> trace list
+val trace_begend_enhance_not_injective : trace -> trace list
 val trace_contains_guess : trace -> bool
 val execute : trace -> term list -> term -> rules -> term list
 

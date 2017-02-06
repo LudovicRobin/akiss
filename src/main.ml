@@ -134,6 +134,8 @@ let rec variables_of_trace t =
           raise (MultiplyBoundVariable x);
        StringSet.remove x fvs, StringSet.add x bvs
      | Output (_, t)
+     | Begin(t)
+     | End(t)
      | Guess(t) -> StringSet.union fvs (variables_of_term t), bvs
      | Test (t1, t2) ->
         let xs1 = variables_of_term t1 in
@@ -236,6 +238,12 @@ let query_guess_reach ?(expected=true) t =
     "Checking if at least one of the following traces is %sguess-reachable.\n%s\n%!"
     (if expected then "" else "not ") (show_string_list t);
     let ttraces = List.concat (List.rev_map (fun x -> traces @@ List.assoc x !processes) t) in
+    let ttraces = if List.exists is_trace_contains_begend ttraces then
+      (
+        let f = List.filter (fun x -> is_trace_contains_begend x) ttraces in
+        List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) f)
+      )
+        else ttraces in
     let ttraces = if List.exists (fun x -> is_trace_contains_event x) ttraces then 
                   List.filter (fun x -> is_trace_contains_event x) ttraces
                else (
