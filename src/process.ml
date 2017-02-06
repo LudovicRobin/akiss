@@ -472,7 +472,7 @@ module TraceSet = Set.Make (Trace)
 
 let rec traces p =
   let d = delta p in
-  let dout = List.filter (fun (a,_) -> match a with Output _::_ -> (classify_action a) = PublicAction | _ -> false) d in
+  let dout = List.filter (fun (a,_) -> match a with | Output _::_ -> (classify_action a) = PublicAction | Begin _::_ -> true | _ -> false) d in
     if dout <> [] && Theory.guess then (
       let r = List.fold_left (fun accu (a,q) -> TraceSet.fold (fun q accu -> 
                                TraceSet.add (trace_prepend a q) accu
