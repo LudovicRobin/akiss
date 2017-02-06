@@ -1,0 +1,44 @@
+/*
+   Manual authentication 2
+*/
+
+symbols ACK/0, d/0, dd/0, short/2, bruteforce/2, g/2, h/1, OK/0, pair/2,
+fst/1, snd/1, mm/0, BADSTATE/0, ENDA/0, ENDB/0, READY/0, START/0;
+
+weaknames k;
+private m,n;
+channels C;
+privchannels OAH, OBH, OHB, OHA;
+var X, Y, X1, X2, Y1, Y2, Yn, x, y, yH, xH, z1H, z2H, Z, z, XX;
+
+rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
+rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1. A->B  : d */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 5. H=>A  : START */
+/* 6. A->B  : k */
+/* 7. A=>H  : short(d,k),k */
+/* 8. B=>H  : short(d,k),k */
+/* H checks if hashes and keys he received are equals */
+
+
+Alice = in(C,X).out(C,X).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
+START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
+out(C,pair(k,short(k,d))).begin(d).in(OHA,Z).[Z=OK]));
+
+Bob =   in(C,x).(out(OBH,READY) ||
+out(C,READY).in(C,y).(out(OBH,pair(y,short(y,x))) ||
+out(C,pair(y,short(y,x))).in(OHB,z).[z=OK]));
+
+Human = in(OAH,xH).in(OBH,yH).[xH = READY].[yH = READY].(out(OHA,
+START) || out(C,START).in(OAH,z1H).in(OBH,z2H).[z1H=z2H].(out(OHB,OK) ||
+out(OHA,OK)));
+
+
+P = (Alice || Bob || Human)::end(x);
+
+guessreachable? P;
