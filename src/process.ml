@@ -390,7 +390,7 @@ let rec simplify = function
   | SymbPhase _ as p -> p
 
 let rec optimize_tests p =
-  if not Theory.guess
+  if Theory.privchannels = []
   then (unlinearize SymbNul (compress_tests [] [] (linearize p)))
   else p
 (* this optimization is currently disabled in the presence of private
