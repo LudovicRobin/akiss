@@ -257,7 +257,7 @@ let query_guess_reach ?(expected=true) t =
                       [] ttraces ))
        in
         verboseOutput "Traces to check:\n===\n"; 
-    List.iter (fun t -> verboseOutput "%s\n\n" (show_trace t)) ttraces;
+    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ttraces;
 
     let () = List.iter check_free_variables ttraces in
     let () = reset_count (List.length ttraces) in
