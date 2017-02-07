@@ -69,6 +69,7 @@ let tests_of_trace show_progress t rew =
   | None -> failwith "fatal error in tests_of_trace"
 
 let gtests_of_trace_job t rew =
+  verboseOutput "Current trace: %s\n%!" (show_trace t);
   verboseOutput "Constructing seed statements\n%!";
   let seed = Seed.guess_seed_statements t rew in
     verboseOutput "Constructing initial kb\n%!";
