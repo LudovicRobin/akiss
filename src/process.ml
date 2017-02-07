@@ -38,6 +38,26 @@ type action =
   | End of term 
 ;;
 
+type action_classification =
+  | PublicAction
+  | PrivateInput of id * id
+  | PrivateOutput of id * term
+
+let classify_action = function
+  | [] -> assert false
+  | Test (_, _) :: _ -> PublicAction
+  | NTest (_, _) :: _ -> PublicAction
+  | Input (c, x) :: _ ->
+     if List.mem c Theory.privchannels
+     then PrivateInput (c, x) else PublicAction
+  | Output (c, t) :: _ ->
+     if List.mem c Theory.privchannels
+     then PrivateOutput (c, t) else PublicAction
+  | Guess (_) :: _ -> PublicAction
+  | Event :: _ -> PublicAction
+  | Begin (_):: _ -> PublicAction 
+  | End(_):: _ -> PublicAction 
+
 let is_io_action a =
   match a with
   | Input(_,_)
@@ -388,13 +408,7 @@ let rec simplify = function
   | SymbPhase _ as p -> p
 
 let rec optimize_tests p =
-  if Theory.privchannels = []
-  then (unlinearize SymbNul (compress_tests [] [] (linearize p)))
-  else p
-(* this optimization is currently disabled in the presence of private
-   channels as it creates a bug in the pre-treatment: tests before a
-   private communication are removed, even though they should not
-   be *)
+  (unlinearize SymbNul (compress_tests [] [] (linearize p)))
 
 and linearize = function
   | SymbNul -> []
@@ -415,7 +429,13 @@ and compress_tests res accu = function
   | SymbAct [NTest (_, _) as a] :: xs ->
      compress_tests res (a :: accu) xs
   | SymbAct [Input (_, _) | Output (_, _) as a] :: xs ->
-     compress_tests (SymbAct (a :: accu) :: res) [] xs
+  (* compress_tests (SymbAct (a :: accu) :: res) [] xs *)
+    let res = if accu = [] then SymbAct [a] :: res else
+	if classify_action [a] = PublicAction
+	then SymbAct (a :: accu) :: res
+	else SymbAct [a] :: SymbAct accu :: res
+    in
+     compress_tests res [] xs
   | p :: xs ->
      let res = if accu = [] then res else SymbAct accu :: res in
      compress_tests (p :: res) [] xs
@@ -445,25 +465,7 @@ let rec delta = function
         (List.map (fun (a,p) -> a, SymbPhase (p,p2)) (delta p1))
         (delta p2)
 
-type action_classification =
-  | PublicAction
-  | PrivateInput of id * id
-  | PrivateOutput of id * term
 
-let classify_action = function
-  | [] -> assert false
-  | Test (_, _) :: _ -> PublicAction
-  | NTest (_, _) :: _ -> PublicAction
-  | Input (c, x) :: _ ->
-     if List.mem c Theory.privchannels
-     then PrivateInput (c, x) else PublicAction
-  | Output (c, t) :: _ ->
-     if List.mem c Theory.privchannels
-     then PrivateOutput (c, t) else PublicAction
-  | Guess (_) :: _ -> PublicAction
-  | Event :: _ -> PublicAction
-  | Begin (_):: _ -> PublicAction 
-  | End(_):: _ -> PublicAction 
 
 module Trace = struct type t = trace let compare = Pervasives.compare end
 module TraceSet = Set.Make (Trace)
