@@ -35,6 +35,7 @@ let jobs = ref 1
 let ac = ref false
 let xor = ref false
 let guess = ref false 
+let reachability_only = ref false
 
 let ac_toolbox = ref false
 let tamarin_variants = ref false

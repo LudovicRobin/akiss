@@ -655,7 +655,7 @@ let processCommand = function
   | QueryNegatable (expected, NegEvSquare (traceList1, traceList2)) ->
     evequiv ~expected traceList1 traceList2
   | QueryNegatable (expected, NegGuessReach (traceList)) ->
-      Process.only_reachability := true;
+    Theory.reachability_only := true;
     query_guess_reach ~expected traceList
   | QueryNegatable (expected, NegIncFt (traceList1, traceList2)) ->
     inclusion_ft ~expected traceList1 traceList2

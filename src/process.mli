@@ -19,8 +19,6 @@
 
 open Term
 
-val only_reachability : bool ref
-
 (** {2 Processes} *)
 
 type action =

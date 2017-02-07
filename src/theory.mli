@@ -29,6 +29,7 @@ val jobs : int
 val cmdlist : Ast.cmd list
 val xor : bool
 val guess: bool
+val reachability_only : bool ref
 val ac : bool
 val por : bool ref
 val disable_por : bool
