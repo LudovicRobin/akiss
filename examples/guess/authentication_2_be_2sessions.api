@@ -27,8 +27,8 @@ rewrite snd(pair(X,Y)) -> Y;
 
 
 Alice = in(C,X).out(C,X).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
-START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
-out(C,pair(k,short(k,d))).begin(X).in(OHA,Z).[Z=OK]));
+START].out(C,k).(out(OAH,pair(k,short(k,X))) ||
+out(C,pair(k,short(k,X))).begin(X).in(OHA,Z).[Z=OK]));
 
 Bob =   in(C,x).(out(OBH,READY) ||
 out(C,READY).in(C,y).(out(OBH,pair(y,short(y,x))) ||
@@ -39,13 +39,15 @@ START) || out(C,START).in(OAH,z1H).in(OBH,z2H).[z1H=z2H].(out(OHB,OK) ||
 out(OHA,OK)));
 
 Alice2 = in(C,X2).out(C,X2).(out(OAH,READY) || out(C,READY).in(OHA,Y2).[Y2 =
-START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
-out(C,pair(k,short(k,d))).begin(X2).in(OHA,Z2).[Z2=OK]));
+START].out(C,k).(out(OAH,pair(k,short(k,X2))) ||
+out(C,pair(k,short(k,X2))).begin(X2).in(OHA,Z2).[Z2=OK]));
 
 Bob2 = in(C,x2).(out(OBH,READY) ||
 out(C,READY).in(C,y2).(out(OBH,pair(y,short(y2,x))) ||
 out(C,pair(y2,short(y2,x))).in(OHB,z2).[z2=OK].end(x2)));
 
 P = (Alice || Bob || Alice2 || Human);
+PP = (Alice || Bob || Alice2 || Bob2 || Human);
 
 guessreachable? P;
+//guessreachable? PP;

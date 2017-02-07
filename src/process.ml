@@ -904,7 +904,7 @@ let check_guess_reachability process test_gr rules = match test_gr with
           let frame = execute process [] w rules in
             if rl = [] then 
                 begin
-                verboseOutput "Guess reachability test:\n %s \n => %s \n%!" (show_term w) (show_frame_enhanced frame); true 
+                Printf.printf "\nGuess reachability test:\n %s \n => %s \n%!" (show_term w) (show_frame_enhanced frame); true 
               end
             else begin
           let guess_checked = check_guess_reachability_recipes rl frame rules in

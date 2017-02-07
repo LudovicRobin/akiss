@@ -27,8 +27,8 @@ rewrite snd(pair(X,Y)) -> Y;
 
 
 Alice = in(C,X).out(C,X).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
-START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
-out(C,pair(k,short(k,d))).begin(X).in(OHA,Z).[Z=OK]));
+START].out(C,k).(out(OAH,pair(k,short(k,X))) ||
+out(C,pair(k,short(k,X))).begin(X).in(OHA,Z).[Z=OK]));
 
 Bob =   in(C,x).(out(OBH,READY) ||
 out(C,READY).in(C,y).(out(OBH,pair(y,short(y,x))) ||
