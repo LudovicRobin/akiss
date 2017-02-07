@@ -155,7 +155,7 @@ let rec trace_begend_del_begend t =
 
 let rec trace_construct_begend_t t t_accu =
   match t with 
-    | Trace(End(x), tr) -> ((trace_beg_vars t_accu), x, trace_begend_del_begend t_accu)::(trace_construct_begend_t tr t_accu)
+    | Trace((End(x) as a), tr) -> ((trace_beg_vars (trace_append (Trace(a,NullTrace)) t_accu)), x, t_accu)::(trace_construct_begend_t tr t_accu)
     | Trace(a, tr) -> (trace_construct_begend_t tr (trace_append (Trace(a,NullTrace)) t_accu))
     | NullTrace -> []
 

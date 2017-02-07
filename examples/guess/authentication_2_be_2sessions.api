@@ -9,7 +9,7 @@ weaknames k;
 private m,n;
 channels C;
 privchannels OAH, OBH, OHB, OHA;
-var X, Y, X1, X2, Y1, Y2, Yn, x, y, yH, xH, z1H, z2H, Z, z, XX;
+var X, Y, X1, X2, Y1, Y2, Z2, Yn, x, y, yH, xH, z1H, z2H, Z, z, XX, x2, y2, z2;
 
 rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
 rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
@@ -28,24 +28,24 @@ rewrite snd(pair(X,Y)) -> Y;
 
 Alice = in(C,X).out(C,X).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
 START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
-out(C,pair(k,short(k,d))).begin(d).in(OHA,Z).[Z=OK]));
+out(C,pair(k,short(k,d))).begin(X).in(OHA,Z).[Z=OK]));
 
 Bob =   in(C,x).(out(OBH,READY) ||
 out(C,READY).in(C,y).(out(OBH,pair(y,short(y,x))) ||
-out(C,pair(y,short(y,x))).in(OHB,z).[z=OK]));
+out(C,pair(y,short(y,x))).in(OHB,z).[z=OK].end(x)));
 
 Human = in(OAH,xH).in(OBH,yH).[xH = READY].[yH = READY].(out(OHA,
 START) || out(C,START).in(OAH,z1H).in(OBH,z2H).[z1H=z2H].(out(OHB,OK) ||
 out(OHA,OK)));
 
-Alice2 = in(C,X).out(C,X).(out(OAH,READY) || out(C,READY).in(OHA,Y).[Y =
+Alice2 = in(C,X2).out(C,X2).(out(OAH,READY) || out(C,READY).in(OHA,Y2).[Y2 =
 START].out(C,k).(out(OAH,pair(k,short(k,d))) ||
-out(C,pair(k,short(k,d))).begin(d).in(OHA,Z).[Z=OK]));
+out(C,pair(k,short(k,d))).begin(X2).in(OHA,Z2).[Z2=OK]));
 
-Bob2 = in(C,x).(out(OBH,READY) ||
-out(C,READY).in(C,y).(out(OBH,pair(y,short(y,x))) ||
-out(C,pair(y,short(y,x))).in(OHB,z).[z=OK]));
+Bob2 = in(C,x2).(out(OBH,READY) ||
+out(C,READY).in(C,y2).(out(OBH,pair(y,short(y2,x))) ||
+out(C,pair(y2,short(y2,x))).in(OHB,z2).[z2=OK].end(x2)));
 
-P = (Alice || Bob || Alice2 || Bob2 || Human)::end(x);
+P = (Alice || Bob || Alice2 || Human);
 
 guessreachable? P;
