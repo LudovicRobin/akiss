@@ -16,8 +16,10 @@ rewrite snd(pair(X,Y)) -> Y;
 
 /* 1a.  ->A : d_A */
 /* 1b.  ->B : d_B */
-/* 2. B=>A  : ACK */
-/* 3. A=>B  : short(d,k),k */
+/* 2a. A=>H : ready */
+/* 2b. B=>H : ready */
+/* 3.  H=>A : start */
+/* 4.  A=>B : (k,sh(k,d_A)) */
 
 Alice = in(CA,XA1).(out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].begin(XA1).
