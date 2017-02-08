@@ -133,6 +133,21 @@ and show_term_list = function
   | x :: l -> ( (show_term x) ^ "," ^ (show_term_list l) )
   | [] -> ""
 
+let show_subst sigma =
+    "{ " ^
+      (String.concat ", "
+	 (trmap
+	    (fun (x, t) -> x ^ " |-> " ^ (show_term t))
+	    sigma)) ^
+      " }"
+
+let rec show_subst_list sl =
+  match sl with
+  | [x] -> show_subst x
+  | x :: l -> ( (show_subst x) ^ "," ^ (show_subst_list l) )
+  | [] -> ""
+
+    
 let rec is_guess_in_term t =
     let gl = List.map (fun x -> Printf.sprintf "w%s" x) !weaknames in
     match t with 
@@ -162,19 +177,6 @@ let bound variable sigma =
 let apply_subst_term_list tl sigma =
   trmap (fun x -> apply_subst x sigma) tl
 
-let show_subst sigma =
-    "{ " ^
-      (String.concat ", "
-	 (trmap
-	    (fun (x, t) -> x ^ " |-> " ^ (show_term t))
-	    sigma)) ^
-      " }"
-
-let rec show_subst_list sl =
-  match sl with
-  | [x] -> show_subst x
-  | x :: l -> ( (show_subst x) ^ "," ^ (show_subst_list l) )
-  | [] -> ""
 
 let show_variant (t,s) =
   (show_term t)^": "^(show_subst s)

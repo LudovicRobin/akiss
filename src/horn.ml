@@ -297,7 +297,7 @@ let rec show_atom_body = function
         | Not_found ->
             name ^ "(" ^ (show_term_list (w::term_list)) ^ ")"
 
-let show_statement st =
+let rec show_statement st =
   Format.sprintf
     "#%d@@%d(len=%d): %s <== %s"
     st.id st.age
@@ -305,6 +305,12 @@ let show_statement st =
     (show_atom st.head)
     (String.concat ", " (trmap show_atom_body st.body))
 
+and show_statement_list = function
+  | [x] -> show_statement x
+  | x :: l -> ( (show_statement x) ^ "\n" ^ (show_statement_list l) )
+  | [] -> ""
+
+    
 (** {3 Unification and substitutions} *)
 
 let csu_atom a1 a2 =
@@ -366,10 +372,9 @@ let apply_subst_atom atom sigma = match atom with
   | Predicate(name, term_list) ->
       Predicate(name, trmap (fun x -> apply_subst x sigma) term_list)
 
-let apply_subst_atom_until_fixpoint atom sigma = match atom with
-  | Predicate(name, term_list) ->
-      Predicate(name, trmap (fun x -> apply_subst_until_fix_point x sigma) term_list)
-
+let apply_subst_atom_until_fixpoint atom sigma =
+  match atom with
+  | Predicate(name, term_list) ->  Predicate(name, trmap (fun x -> apply_subst_until_fix_point x sigma) term_list)
 
 let apply_subst_st st sigma =
   { st with
@@ -1590,17 +1595,22 @@ let rec unifiers_n_h (l : atom list) (sigma) :subst list =
         (
           (*Printf.printf "Worlds : (%s,%s)\n" (show_term w1) (show_term
            * w2);*)
-          let sigmas = R.csu w1 w2 in 
-  List.concat (List.map (fun s -> unifiers_n_h ((apply_subst_atom_until_fixpoint c
-                                                   s)::tl) (List.concat [sigma;s])) sigmas)
+	  let sigmas = R.csu w1 w2 in 
+	  List.concat (List.map
+			 (fun s -> unifiers_n_h ( (apply_subst_atom_until_fixpoint c s)::
+						    (List.map (fun a -> apply_subst_atom_until_fixpoint a s) tl)
+			  )
+			   (List.concat [sigma;s]))
+			 sigmas)
         )
     | _ -> [sigma]
-
+(* (List.map (fun a -> apply_subst_atom_until_fixpoint a s) tl) *)
 
 let rec unifiers_n (l : atom list) : subst list = 
   unifiers_n_h l []
 
 
+  
 (** [ridentical fa fb] attempts to combine two clauses when one
   * concludes "identical" and the other concludes "reach" and
   * their world params match.
@@ -1634,23 +1644,27 @@ let rec ridentical fa fb =
       | Predicate("reach",_),Predicate("identical",_) -> ridentical fb fa
       | _ -> []
 
-let rec eridentical fa fb =
+let eridentical fa fb =
   match fa.head with
     | Predicate("reach", [up]) -> 
         assert (is_solved fa && (List.for_all (fun x -> is_solved x) fb)) ;
-        debugOutput
-          "eridentical trying to combine %s with some others\n%!"
-          (show_statement fa) ;
-        let sigmas = unifiers_n (fa.head::(List.map (fun x -> x.head) fb)) in
-          List.map
-            (fun sigma ->
-               let newhead = Predicate("eridentical", 
-                   up::(List.concat (List.map (fun x-> (match x.head with 
-                                                          | Predicate("eidentical", [u; r; rp]) -> [r ; rp] 
-                                                          | _ -> [] 
-                                                                                   )
-               )
-                                                                         fb))) in
+      debugOutput
+          "eridentical: trying to combine\n%s\nwith some others:\n%s\n"
+        (show_statement fa)
+	(show_statement_list fb);
+
+      let sigmas = unifiers_n (fa.head::(List.map (fun x -> x.head) fb)) in
+      debugOutput "Show sigmas\n%s\n" (show_subst_list sigmas); flush_all ();
+      List.map
+        (fun sigma ->
+          let newhead = Predicate("eridentical", 
+				  up::(List.concat (List.map (fun x-> (match x.head with 
+                                  | Predicate("eidentical", [u; r; rp]) -> [r ; rp] 
+                                  | _ -> [] 
+                                  )
+				  )
+                                                      fb))) in
+
                let newbody = List.append (get_body fa) (List.concat (List.map (fun fbi -> get_body fbi) fb)) in
                let result =
                  apply_subst_atom_until_fixpoint newhead sigma,
