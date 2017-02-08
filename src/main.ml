@@ -231,45 +231,72 @@ let query ?(expected=true) s t =
     if expected then exit 1
   end
 
-let query_guess_reach_trace t =
+let guess_reach_trace t =
   gtests_of_trace true t Theory.rewrite_rules
+
+let query_correspondence ?(expected=true) p =
+    Printf.printf
+    "Checking correspondance for the following traces.\n%s\n%!" (show_string_list p);
+    let ttraces = List.concat (List.rev_map (fun x -> traces @@ List.assoc x !processes) p) in
+    let ftraces = List.filter (fun x -> is_trace_contains_corres_end x) ttraces in
+
+
+    let rtraces = List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) ftraces) in
+    let traces_to_check = traces_auto_guess_enhance rtraces in
+    verboseOutput "Traces to check:\n===\n"; 
+    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
+
+    let () = List.iter check_free_variables traces_to_check in
+    let () = reset_count (List.length traces_to_check) in
+      Printf.printf "%d traces will be checked\n%!" (List.length traces_to_check);
+    let result = (Lwt_list.exists_p (fun t -> let r = guess_reach_trace t
+                                     in (* do_count ();*)  r) traces_to_check) in
+      Lwt_main.run ( 
+        Lwt.bind result (fun result -> 
+                           (if result 
+                            then (Printf.printf "\nWe found an attack.\n"; 
+                                  if not expected then exit 1)
+                            else (Printf.printf "\nNo attack found.\n"; 
+                                               if expected then exit 1)); 
+                           Lwt.return () )
+      ) 
 
 let query_guess_reach ?(expected=true) t =
   Printf.printf
     "Checking if at least one of the following traces is %sguess-reachable.\n%s\n%!"
     (if expected then "" else "not ") (show_string_list t);
     let ttraces = List.concat (List.rev_map (fun x -> traces @@ List.assoc x !processes) t) in
-    let ttraces = if List.exists is_trace_contains_begend ttraces then
-      (
-        let f = List.filter (fun x -> is_trace_contains_begend x) ttraces in
-        List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) f)
+    (if List.exists is_trace_contains_begend ttraces then 
+      invalid_arg "Found a correspondence event (begin or end). You should use a correspondence based query.";);
+    let ttraces = List.filter (fun x -> (is_trace_contains_event x)) ttraces in
+    if (List.length ttraces) = 0 then (
+      Printf.printf "No event instructions are reachable.\n";
+                                  if expected then exit 1 
+    )
+     else (
+
+    let traces_to_check = traces_auto_guess_enhance ttraces in
+
+    verboseOutput "Traces to check:\n===\n"; 
+    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
+
+    let () = List.iter check_free_variables traces_to_check in
+    let () = reset_count (List.length traces_to_check) in
+      Printf.printf "%d traces will be checked\n%!" (List.length traces_to_check);
+    let result = (Lwt_list.exists_p (fun t -> let r = guess_reach_trace t
+                                     in (* do_count ();*)  r) traces_to_check) in
+      Lwt_main.run ( 
+        Lwt.bind result (fun result -> 
+                           (if result 
+                            then (Printf.printf "\nWe found an attack.\n"; 
+                                  if not expected then exit 1)
+                            else (Printf.printf "\nNo attack found.\n"; 
+                                               if expected then exit 1)); 
+                           Lwt.return () )
       )
-        else ttraces in
-    let ttraces = if List.exists (fun x -> is_trace_contains_event x) ttraces then 
-                  List.filter (fun x -> is_trace_contains_event x) ttraces
-               else (
-                 let maxTraceSize = List.fold_left (fun max x -> if Process.trace_size_ign_guess x > max then Process.trace_size_ign_guess x else max) 0 ttraces in
-                 List.filter (fun x -> Process.trace_size_ign_guess x = maxTraceSize) ttraces
-               ) in
-    let ttraces = if (List.exists (fun t -> not (is_trace_auto_guess t)) ttraces)
-    then ( ttraces ) 
-    else ( (List.fold_left 
-        (fun tl t -> (trace_guess_enhance t)@tl) 
-                      [] ttraces ))
-       in
-        verboseOutput "Traces to check:\n===\n"; 
-    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ttraces;
-
-    let () = List.iter check_free_variables ttraces in
-    let () = reset_count (List.length ttraces) in
-      Printf.printf "%d traces will be checked\n%!" (List.length ttraces);
-    let result = (Lwt_list.exists_p (fun t -> let r = query_guess_reach_trace t
-                                     in (* do_count ();*)  r) ttraces) in
-    Lwt_main.run (Lwt.bind result (fun result -> (if result 
-                                                      then (Printf.printf "\nWe found a guess reachable trace !\n"; if not expected then exit 1)
-                                                      else (Printf.printf "\nNo reachable traces exist.\n"; if expected then exit 1)); Lwt.return () ))
-
-
+     )
+    
+    
 let inclusion_ct ?(expected=true) s t =
   Printf.printf
     "Checking coarse trace %sinclusion of %s in %s\n%!"
@@ -658,6 +685,9 @@ let processCommand = function
   | QueryNegatable (expected, NegGuessReach (traceList)) ->
     Theory.reachability_only := true;
     query_guess_reach ~expected traceList
+  | QueryNegatable (expected, NegCorres (traceList)) ->
+    Theory.reachability_only := true;
+    query_correspondence ~expected traceList
   | QueryNegatable (expected, NegIncFt (traceList1, traceList2)) ->
     inclusion_ft ~expected traceList1 traceList2
   | QueryNegatable (expected, NegIncCt (traceList1, traceList2)) ->

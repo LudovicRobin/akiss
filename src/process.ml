@@ -127,6 +127,11 @@ let rec is_trace_contains_begend = function
     | Trace(_,tr) -> is_trace_contains_begend tr
     | NullTrace -> false 
 
+let rec is_trace_contains_corres_end = function
+    | Trace(End(_), _) -> true 
+    | Trace(_,tr) -> is_trace_contains_begend tr
+    | NullTrace -> false 
+
 let rec trace_guess_enhance_h (flag : bool) (wname : action) (trace : trace) : trace list = 
   match trace with
     | Trace(Input(_) as a, tr) ->
@@ -157,6 +162,13 @@ let trace_guess_enhance t =
               (fun rtl t -> (trace_guess_enhance_h true g t) @ rtl 
            ) [] tl)
       ) [t] Theory.weaknames
+
+let traces_auto_guess_enhance ttraces =
+  if (List.exists (fun t -> not (is_trace_auto_guess t)) ttraces)
+    then ( ttraces ) 
+    else ( (List.fold_left 
+        (fun tl t -> (trace_guess_enhance t)@tl) 
+                      [] ttraces ))
 
 let rec trace_beg_vars t =
   match t with 
@@ -362,7 +374,7 @@ let rec symb_of_temp process processes =
   match process with
   | TempEmpty -> SymbNul
   | TempAction a -> SymbAct [parse_action a]
-  | TempSequence (TempAction(TempActionEvent), p2) -> SymbNul
+  | TempSequence (TempAction(TempActionEvent as a), p2) -> SymbAct [parse_action a]
   | TempSequence (p1, p2) ->
      let p1 = symb_of_temp p1 processes in
      let p2 = symb_of_temp p2 processes in

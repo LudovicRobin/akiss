@@ -33,7 +33,8 @@ open Ast
 %token Arrow Equals NEquals Dot Slash Comma Semicolon
 %token Out In And Zero Plus Guess
 %token Ev Beg End
-%token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct GuessReach
+%token Not Equivalent Square EvSquare Variants Unifiers Normalize Incft Incct 
+%token GuessReach Corres
 %token Print PrintTraces GuessPrint
 %token InnerSequence InnerInterleave InnerChoice InnerPhase
 %token EOF
@@ -85,6 +86,7 @@ main:
  | Square identifierList And identifierList { NegSquare ($2, $4) }
  | EvSquare identifierList And identifierList { NegEvSquare ($2, $4) }
  | GuessReach identifierList { NegGuessReach ($2) }
+ | Corres identifierList { NegCorres ($2) }
  | Incft identifierList In identifierList { NegIncFt ($2, $4) }
  | Incct identifierList In identifierList { NegIncCt ($2, $4) }
 

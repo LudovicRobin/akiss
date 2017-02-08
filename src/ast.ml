@@ -45,6 +45,7 @@ type negatable_cmd =
   | NegSquare of (string list) * (string list)
   | NegEvSquare of (string list) * (string list)
   | NegGuessReach of (string list)
+  | NegCorres of (string list)
   | NegIncFt of (string list) * (string list)
   | NegIncCt of (string list) * (string list)
 

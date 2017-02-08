@@ -45,7 +45,7 @@ rule token = parse
     | "channels" { Channels }
     | "evchannels" { EvChannels }
     | "privchannels" { PrivChannels }
-    | "weaknames" { WeakNames } 
+    | "weak" { WeakNames } 
     | "::" { InnerSequence }
     | "||" { InnerInterleave }
     | "++" { InnerChoice }
@@ -58,6 +58,7 @@ rule token = parse
     | "includedct?" { Incct }
     | "fwdequivalentft?" { EvSquare }
     | "guessreachable?" { GuessReach }
+    | "correspondence?" { Corres }
     | "var" { Var }
     | "equivalentct?" { Equivalent }
     | "not" { Not }

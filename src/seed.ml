@@ -164,6 +164,8 @@ let rec trace_statements_h oc tr rules substitutions body world clauses =
           trace_statements_h (oc + 1) remaining_trace rules substitutions body
             next_world (List.concat [ (trace_equationalize new_reach rules substitutions);
               clauses])
+    | Trace(Begin _, _) 
+    | Trace(End _, _) -> invalid_arg("Unknown action during seed statements generation")
 
 ;;
 
