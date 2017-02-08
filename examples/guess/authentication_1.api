@@ -2,26 +2,34 @@
    Manual authentication 1 
 */
 
-symbols d/0, dd/0, ACK/0, short/2, bruteforce/2, pair/2, fst/1, snd/1, BADSTATE/0;
+symbols ready/0, start/0, sh/2, bf/2, pair/2, fst/1, snd/1;
 
-weaknames k;
-channels C;
-privchannels O;
-var X, Y, X1, X2, Y1, Y2, Yn, x, y;
+weak k;
+channels CA, CB;
+privchannels OAH, OHA, OBH, OAB;
+var X, Y, X1, Y1, XA1, XA2, XB1, XB2, XH1, XH2;
 
-rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
-rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
+rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 rewrite fst(pair(X,Y)) -> X;
 rewrite snd(pair(X,Y)) -> Y;
 
-/* 1. A->B  : d */
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
 /* 2. B=>A  : ACK */
 /* 3. A=>B  : short(d,k),k */
 
-Alice = out(C,d).in(O,X).(out(O,pair(short(d,k),k)) || out(C,pair(short(d,k),k)));
+Alice = in(CA,XA1).(out(OAH,ready) ||
+        in(OHA,XA2).[XA2=start].begin(XA1).
+        (out(OAB,pair(k,sh(k,XA1))) || out(CA,pair(k,sh(k,XA1)))
+        ));
+        
+Bob   = in(CB,XB1).(out(OBH,ready) ||
+        in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].end(XB1)
+        );
 
-Bob = in(C,x).(out(O,ACK) || out(C,ACK).in(O,y).[short(x,snd(y))=fst(y)]);
+H     = (in(OAH,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready])::out(OHA,start);
 
-P = (Alice || Bob)::[x!=d].event; 
+P = (Alice || Bob || H);
 
-guessreachable? P;
+correspondence? P;
