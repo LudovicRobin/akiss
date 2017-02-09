@@ -159,7 +159,7 @@ let trace_guess_enhance t =
       (fun tl wn -> 
          let g = Guess(Fun(wn,[])) in 
            (List.fold_left 
-              (fun rtl t -> (trace_guess_enhance_h true g t) @ rtl 
+              (fun rtl t -> (trace_guess_enhance_h false g t) @ rtl 
            ) [] tl)
       ) [t] Theory.weaknames
 
