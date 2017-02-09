@@ -1,0 +1,35 @@
+/*
+   Manual authentication 1 
+*/
+
+symbols ready/0, start/0, sh/2, bf/2, pair/2, fst/1, snd/1;
+
+weak k;
+channels CA, CB;
+privchannels OAH, OHA, OBH, OAB;
+var X, Y, X1, Y1, XA1, XA2, XB1, XB2, XH1, XH2;
+
+rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
+/* 2.  H=>A : start */
+/* 3.  A=>B : (k,sh(k,d_A)) */
+
+Alice = in(CA,XA1).
+        in(OHA,XA2).[XA2=start].begin(XA1).
+        (out(OAB,pair(k,sh(k,XA1))) || out(CA,pair(k,sh(k,XA1)))
+        );
+        
+Bob   = in(CB,XB1).
+        in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].end(XB1)
+        ;
+
+H     = out(OHA,start);
+
+P = (Alice || Bob || H);
+
+correspondence? P;
