@@ -185,7 +185,7 @@ let rec trace_begend_del_begend t =
 
 let rec trace_construct_begend_t t t_accu =
   match t with 
-    | Trace((End(x) as a), tr) -> ((trace_beg_vars (trace_append (Trace(a,NullTrace)) t_accu)), x, t_accu)::(trace_construct_begend_t tr t_accu)
+    | Trace((End(x)), tr) -> ((trace_beg_vars t_accu), x, t_accu)::(trace_construct_begend_t tr t_accu)
     | Trace(a, tr) -> (trace_construct_begend_t tr (trace_append (Trace(a,NullTrace)) t_accu))
     | NullTrace -> []
 
@@ -194,11 +194,16 @@ let trace_construct_begend t =
 
 let trace_begend_enhance_not_injective t =
   let bes = trace_construct_begend t in
-  List.rev_map trace_begend_del_begend (List.rev_map (fun (bv,ev,tt) -> 
-                List.fold_left (fun t_acc x -> 
-                                  trace_append
-                                    (Trace(NTest(x,ev), NullTrace))
-                                    tt) tt bv) bes)
+  List.rev_map trace_begend_del_begend 
+    (List.rev_map 
+       (fun (bv,ev,tt) -> 
+          List.fold_left 
+                     (fun t_acc x -> 
+                        trace_append
+                          (Trace(NTest(x,ev), NullTrace))
+                          t_acc) 
+                     tt bv
+       ) bes)
 
 let rec trace_contains_guess = function
     | Trace(Guess(term),_) -> true
@@ -512,28 +517,31 @@ let rec traces p =
     )
     else (
       let r =
-        List.fold_left (fun accu (a, q) ->
-                          match classify_action a with
-        | PublicAction ->
-            TraceSet.fold (fun q accu ->
-                             TraceSet.add (trace_prepend a q) accu
-            ) (traces q) accu
-      | PrivateInput (_, _) -> accu
-      | PrivateOutput (c, t) ->
-         List.fold_left (fun accu (a, _) ->
-           match classify_action a with
-           | PrivateInput (c', x) when c = c' ->
-              List.fold_left (fun accu (a, q) ->
-                match classify_action a with
-                | PrivateInput (c', x') when x = x' ->
-                   assert (c = c');
-                  TraceSet.fold (fun q accu ->
-                    TraceSet.add q accu
-                  ) (traces (replace_var_in_symb x t q)) accu
-                | _ -> accu
-              ) accu (delta q)
-           | _ -> accu
-         ) accu d
+        List.fold_left 
+          (fun accu (a, q) ->
+             match classify_action a with
+               | PublicAction ->
+                   TraceSet.fold (fun q accu ->
+                                    TraceSet.add (trace_prepend a q) accu
+                   ) (traces q) accu
+               | PrivateInput (_, _) -> accu
+               | PrivateOutput (c, t) -> 
+                   List.fold_left 
+                     (fun accu (a, _) ->
+                        match classify_action a with
+                          | PrivateInput (c', x) when c = c' ->
+                              List.fold_left 
+                                (fun accu (a, q) ->
+                                   match classify_action a with
+                                     | PrivateInput (c', x') when x = x' ->
+                                         assert (c = c');
+                                         TraceSet.fold (fun q accu ->
+                                                          TraceSet.add q accu
+                                         ) (traces (replace_var_in_symb x t q)) accu
+                                     | _ -> accu
+                                ) accu (delta q)
+                          | _ -> accu
+                     ) accu d
     ) TraceSet.empty d
   in
   if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
