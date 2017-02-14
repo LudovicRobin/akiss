@@ -91,6 +91,9 @@ type trace =
   | Trace of action * trace
 ;;
 
+let action_id = ref 0
+let nid () = action_id := !action_id + 1; !action_id
+
 let rec trace_size = function
   | NullTrace -> 0
   | Trace(_, t) -> 1 + (trace_size t)
@@ -294,7 +297,7 @@ let replace_var_in_term x t term =
 
 type symbProcess =
   | SymbNul
-  | SymbAct of action list (* non-empty list *)
+  | SymbAct of int * action list (* non-empty list *)
   | SymbSeq of symbProcess * symbProcess
   | SymbPar of symbProcess * symbProcess
   | SymbAlt of symbProcess * symbProcess
@@ -302,7 +305,7 @@ type symbProcess =
 
 let rec show_symb = function
   | SymbNul -> "0"
-  | SymbAct a -> "(act " ^ String.concat " " (List.map show_action a) ^ ")"
+  | SymbAct (id, a) -> "(act " ^ (Printf.sprintf "%d" id) ^ String.concat " " (List.map show_action a) ^ ")"
   | SymbSeq (p1, p2) -> "(seq " ^ show_symb p1 ^ " " ^ show_symb p2 ^ ")"
   | SymbPar (p1, p2) -> "(par " ^ show_symb p1 ^ " " ^ show_symb p2 ^ ")"
   | SymbAlt (p1, p2) -> "(alt " ^ show_symb p1 ^ " " ^ show_symb p2 ^ ")"
@@ -312,20 +315,28 @@ let rec show_symb = function
 let rec actions_of p =
   match p with
   | SymbNul -> ActionSet.empty
-  | SymbAct a -> ActionSet.of_list (List.rev_map remove_term_in_io_action (List.filter is_io_action a))
+  | SymbAct(id, a) -> ActionSet.of_list (List.rev_map remove_term_in_io_action (List.filter is_io_action a))
   | SymbSeq (p1, p2) 
   | SymbAlt (p1, p2) 
   | SymbPhase (p1, p2) 
   | SymbPar (p1, p2) -> ActionSet.union (actions_of p1) (actions_of p2)
 
+let rec actions_id_of p =
+  match p with
+  | SymbNul -> []
+  | SymbAct(id, a) -> [SymbAct(id,a)]
+  | SymbSeq (p1, p2) 
+  | SymbAlt (p1, p2) 
+  | SymbPhase (p1, p2) 
+  | SymbPar (p1, p2) -> List.concat [(actions_id_of p1);(actions_id_of p2)]
 
 let action_determinate p =
 
   let rec ad p =
     match p with
     | SymbNul -> true
-    | SymbAct a -> true
-    | SymbSeq (SymbAct a, p) -> ad p
+    | SymbAct(_,a) -> true
+    | SymbSeq (SymbAct(_,a), p) -> ad p
     | SymbSeq (p, SymbNul) -> ad p
     | SymbSeq (SymbSeq (p1, p2), p) -> ad p1 &&  ad (SymbSeq (p2, p))
     | SymbPar (p1, p2) -> ActionSet.is_empty (ActionSet.inter (actions_of p1) (actions_of p2)) && ( ad p1 && ad p2 )
@@ -357,7 +368,7 @@ let replace_var_in_act x t a =
 let rec replace_var_in_symb x t p =
   match p with
   | SymbNul -> SymbNul
-  | SymbAct a -> SymbAct (List.map (replace_var_in_act x t) a)
+  | SymbAct(id,a) -> SymbAct (id,List.map (replace_var_in_act x t) a)
   | SymbSeq (p1, p2) ->
      let p1 = replace_var_in_symb x t p1 in
      let p2 = replace_var_in_symb x t p2 in
@@ -378,8 +389,8 @@ let rec replace_var_in_symb x t p =
 let rec symb_of_temp process processes =
   match process with
   | TempEmpty -> SymbNul
-  | TempAction a -> SymbAct [parse_action a]
-  | TempSequence (TempAction(TempActionEvent as a), p2) -> SymbAct [parse_action a]
+  | TempAction(a) -> SymbAct(nid (),[parse_action a])
+  | TempSequence (TempAction(TempActionEvent as a), p2) -> SymbAct(nid (), [parse_action a])
   | TempSequence (p1, p2) ->
      let p1 = symb_of_temp p1 processes in
      let p2 = symb_of_temp p2 processes in
@@ -406,7 +417,7 @@ let rec symb_of_temp process processes =
        
 let rec simplify = function
   | SymbNul -> SymbNul
-  | SymbAct a -> SymbAct a
+  | SymbAct(id, a) -> SymbAct(id, a)
   | SymbSeq (p1, p2) ->
      (match simplify p1, simplify p2 with
      | SymbNul, p -> p
@@ -440,46 +451,47 @@ and unlinearize res = function
   | x :: xs -> unlinearize (SymbSeq (x, res)) xs
 
 and compress_tests res accu = function
-  | [] -> if accu = [] then res else SymbAct accu :: res
-  | SymbAct [Test (_, _) as a] :: xs ->
+  | [] -> if accu = [] then res else SymbAct(nid (), accu) :: res
+  | SymbAct(_, [Test (_, _) as a]) :: xs ->
      compress_tests res (a :: accu) xs
-  | SymbAct [NTest (_, _) as a] :: xs ->
+  | SymbAct(_,[NTest (_, _) as a]) :: xs ->
      compress_tests res (a :: accu) xs
-  | SymbAct [Input (_, _) | Output (_, _) as a] :: xs ->
+  | SymbAct(id,[Input (_, _) | Output (_, _) as a]) :: xs ->
   (* compress_tests (SymbAct (a :: accu) :: res) [] xs *)
-    let res = if accu = [] then SymbAct [a] :: res else
+    let res = if accu = [] then SymbAct(id, [a]) :: res else
 	if classify_action [a] = PublicAction
-	then SymbAct (a :: accu) :: res
-	else SymbAct [a] :: SymbAct accu :: res
+	then SymbAct (id, a :: accu) :: res
+	else SymbAct (id, [a]) :: SymbAct (nid (), accu) :: res
     in
      compress_tests res [] xs
   | p :: xs ->
-     let res = if accu = [] then res else SymbAct accu :: res in
+     let res = if accu = [] then res else SymbAct(nid (), accu) :: res in
      compress_tests (p :: res) [] xs
 
 let rec delta = function
   | SymbNul -> []
-  | SymbAct a -> [ a, SymbNul ]
+  | SymbAct(id,a) -> [ (a, SymbNul, (id, [SymbNul])) ]
   | SymbSeq (p1, p2) ->
-     List.fold_left (fun accu (a, p) ->
-       (a, simplify (SymbSeq (p, p2))) :: accu
+     List.fold_left (fun accu (a, p, (i,_)) ->
+       (a, (simplify (SymbSeq (p, p2))), (i,actions_id_of p)) :: accu
      ) [] (delta p1)
   | SymbAlt (p1, p2) -> delta p1 @ delta p2
   | SymbPar (p1, p2) ->
      let s1 =
-       List.fold_left (fun accu (a, p) ->
-         (a, simplify (SymbPar (p, p2))) :: accu
+       List.fold_left (fun accu (a, p, (i,_)) ->
+         (a, simplify (SymbPar (p, p2)), (i,actions_id_of p)) :: accu
        ) [] (delta p1)
      in
      let s2 =
-       List.fold_left (fun accu (a, p) ->
-         (a, simplify (SymbPar (p1, p))) :: accu
+       List.fold_left (fun accu (a, p, (i,_)) ->
+         (a, simplify (SymbPar (p1, p)), (i,actions_id_of p)) :: accu
        ) s1 (delta p2)
      in
      s2
   | SymbPhase (p1, p2) ->
       List.rev_append
-        (List.map (fun (a,p) -> a, SymbPhase (p,p2)) (delta p1))
+        (List.map (fun (a,p,(i,_)) -> 
+                     a, SymbPhase (p,p2), (i,List.append (actions_id_of p) (actions_id_of p2))) (delta p1))
         (delta p2)
 
 
@@ -487,11 +499,17 @@ let rec delta = function
 module Trace = struct type t = trace let compare = Pervasives.compare end
 module TraceSet = Set.Make (Trace)
 
+let rec is_action_id_succ id actions =
+  match actions with
+    | SymbAct(id',a)::tl when id' = id -> true
+    | _::tl -> is_action_id_succ id tl
+    | [] -> false
+
 let rec traces p =
   let d = delta p in
-  let isPhase = List.exists (fun (_,b) -> match b with SymbPhase _ -> true | _ -> false) d in
+  let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ -> true | _ -> false) d in
   let dout = List.filter 
-               (fun (a,b) -> if isPhase then (
+               (fun (a,b,_) -> if isPhase then (
                  match b with 
                    | SymbPhase _ -> (
                         match a with 
@@ -508,7 +526,7 @@ let rec traces p =
                )
                ) d in
     if dout <> [] && !Theory.reachability_only then (
-      let r = List.fold_left (fun accu (a,q) -> TraceSet.fold (fun q accu -> 
+      let r = List.fold_left (fun accu (a,q,_) -> TraceSet.fold (fun q accu -> 
                                TraceSet.add (trace_prepend a q) accu
       ) (traces q) accu)
         TraceSet.empty dout
@@ -518,20 +536,22 @@ let rec traces p =
     else (
       let r =
         List.fold_left 
-          (fun accu (a, q) ->
+          (fun accu (a, q, (id,r)) ->
              match classify_action a with
                | PublicAction ->
                    TraceSet.fold (fun q accu ->
                                     TraceSet.add (trace_prepend a q) accu
                    ) (traces q) accu
                | PrivateInput (_, _) -> accu
-               | PrivateOutput (c, t) -> 
+               | PrivateOutput (c, t) -> (
                    List.fold_left 
-                     (fun accu (a, _) ->
+                     (fun accu (a, _, (id',_)) ->
                         match classify_action a with
                           | PrivateInput (c', x) when c = c' ->
+                              if (is_action_id_succ id' r) then accu
+                              else (
                               List.fold_left 
-                                (fun accu (a, q) ->
+                                (fun accu (a, q, _) ->
                                    match classify_action a with
                                      | PrivateInput (c', x') when x = x' ->
                                          assert (c = c');
@@ -540,8 +560,10 @@ let rec traces p =
                                          ) (traces (replace_var_in_symb x t q)) accu
                                      | _ -> accu
                                 ) accu (delta q)
+                              )
                           | _ -> accu
                      ) accu d
+                 )
     ) TraceSet.empty d
   in
   if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
@@ -553,14 +575,14 @@ let rec traces p =
   * for the subset of processes that is supported for it. *)
 
 let rec canonize = function
-  | SymbSeq (SymbAct [],q) -> assert false
-  | SymbSeq (SymbAct [a],q) -> SymbSeq (SymbAct [a], q)
-  | SymbSeq (SymbAct l,q) ->
+  | SymbSeq (SymbAct(_,[]),q) -> assert false
+  | SymbSeq (SymbAct(id,[a]),q) -> SymbSeq (SymbAct(id, [a]), q)
+  | SymbSeq (SymbAct(_,l),q) ->
       List.fold_left
-        (fun q a -> SymbSeq (SymbAct [a], q))
+        (fun q a -> SymbSeq (SymbAct(nid (),[a]), q))
         q l
   | SymbSeq (p, SymbNul) -> canonize p
-  | SymbAct l -> canonize (SymbSeq (SymbAct l, SymbNul))
+  | SymbAct(id, l) -> canonize (SymbSeq (SymbAct(id,l), SymbNul))
   | (SymbPar _ | SymbNul) as p -> p
   | SymbSeq _ | SymbAlt _ | SymbPhase _ -> failwith "unsupported"
 
@@ -584,14 +606,14 @@ let traces_por p =
                 traces async sync
             | SymbPar (q1,q2) ->
                 traces (q1::q2::async) sync
-            | SymbSeq (SymbAct [Output (c,t) as a], q) ->
+            | SymbSeq (SymbAct(_,[Output (c,t) as a]), q) ->
                 prepend_traces a (traces (q::async) sync)
-            | SymbSeq (SymbAct [Test (t,t') as a], q) 
-            | SymbSeq (SymbAct [NTest (t,t') as a], q) ->
+            | SymbSeq (SymbAct(_,[Test (t,t') as a]), q) 
+            | SymbSeq (SymbAct(_,[NTest (t,t') as a]), q) ->
                 TraceSet.union
                   (prepend_traces a (traces (q::async) sync))
                   (traces async sync)
-            | SymbSeq (SymbAct [Input _], q) ->
+            | SymbSeq (SymbAct(_,[Input _]), q) ->
                 traces async (p::sync)
             | _ ->
                 failwith
@@ -601,10 +623,10 @@ let traces_por p =
           (* Focus a process, execute it until focus can be released *)
           let rec focus p sync =
             match canonize p with
-              | SymbSeq (SymbAct [Input (c,x) as a], q) ->
+              | SymbSeq (SymbAct(_,[Input (c,x) as a]), q) ->
                   prepend_traces a (focus q sync)
-              | SymbSeq (SymbAct [Test (t,t') as a], q) 
-              | SymbSeq (SymbAct [NTest (t,t') as a], q) ->
+              | SymbSeq (SymbAct(_,[Test (t,t') as a]), q) 
+              | SymbSeq (SymbAct(_,[NTest (t,t') as a]), q) ->
                   (* In case the test fails, the continuation is null
                    * so we have an improper block: no need to explore further
                    * traces. *)
@@ -613,7 +635,7 @@ let traces_por p =
                   (* Obvious improper block *)
                   TraceSet.singleton NullTrace
               | SymbPar (_,_)
-              | SymbSeq (SymbAct [Output _], _) ->
+              | SymbSeq (SymbAct(_,[Output _]), _) ->
                   (* In case of Par, this could be improper
                    * but we don't care and it won't happen in practice. *)
                   traces [p] sync
