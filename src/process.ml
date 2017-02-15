@@ -489,10 +489,12 @@ let rec delta = function
      in
      s2
   | SymbPhase (p1, p2) ->
-      List.rev_append
+      let s = List.rev_append
         (List.map (fun (a,p,(i,_)) -> 
-                     a, SymbPhase (p,p2), (i,List.append (actions_id_of p) (actions_id_of p2))) (delta p1))
+                     a, SymbPhase (p,p2), (i,(actions_id_of p2))) (delta p1))
         (delta p2)
+      in 
+      s
 
 
 
@@ -545,9 +547,10 @@ let rec traces p =
                | PrivateInput (_, _) -> accu
                | PrivateOutput (c, t) -> (
                    List.fold_left 
-                     (fun accu (a, _, (id',_)) ->
+                     (fun accu (a, _, (id',r')) ->
                         match classify_action a with
                           | PrivateInput (c', x) when c = c' ->
+                              List.iter (fun x -> Printf.printf "%d %s\n" (id') (show_symb x)) (r);
                               if (is_action_id_succ id' r) then accu
                               else (
                               List.fold_left 
