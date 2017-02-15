@@ -550,7 +550,6 @@ let rec traces p =
                      (fun accu (a, _, (id',r')) ->
                         match classify_action a with
                           | PrivateInput (c', x) when c = c' ->
-                              List.iter (fun x -> Printf.printf "%d %s\n" (id') (show_symb x)) (r);
                               if (is_action_id_succ id' r) then accu
                               else (
                               List.fold_left 
