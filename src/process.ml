@@ -510,10 +510,20 @@ let rec is_action_id_succ id actions =
 let is_succ_independant d ds =
   match d with 
     | (_,_,(id,r)) -> let ids = List.map (fun a -> match a with SymbAct(id,_) -> id | _ -> 0) r in 
-         List.exists (fun (_,_,(id',_)) -> List.mem id' ids) ds
+         List.for_all (fun (_,_,(id',_)) -> id = id' || (List.mem id' ids)) ds
 
 let rec traces p =
   let d = delta p in
+  
+  let event_first = if !Theory.reachability_only then (List.filter (fun (a,_,_) -> match a with Event::_ -> true | _ -> false) d) else [] in
+  if event_first <> [] then ( 
+      let r = List.fold_left (fun accu (a,_,_) ->  
+                               TraceSet.add (trace_prepend a NullTrace) accu)
+        TraceSet.empty event_first 
+      in 
+        if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+    ) 
+  else (
   (* let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
    * true | _ -> false) d in*)
   let dout = List.filter 
@@ -576,6 +586,7 @@ let rec traces p =
   in
   if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
   )
+    )
 
 (** Computing the set of traces with partial order reduction
   *
