@@ -525,22 +525,22 @@ let rec traces p =
         if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
     ) 
   else (
-  (* let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
-   * true | _ -> false) d in*)
+  let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
+   true | _ -> false) d in
   let dout = List.filter 
-               (fun d' -> match d' with | (a,b,(id,r)) -> (*if isPhase then (
+               (fun d' -> match d' with | (a,b,(id,r)) -> if isPhase then (
                  match b with 
                    | SymbPhase _ -> (
                         match a with 
-                          | Output _::_ -> ((classify_action a) = PublicAction)
-                          | End _::_ -> true 
+                          | Output _::[] -> ((classify_action a) = PublicAction)
+                          | End _::[] -> true 
                           |  _ -> false
                      )
                    | _ -> false
-               ) else *)(
+               ) else (
                  match a with 
-                          | Output _::[] -> (is_succ_independant d' d) && (classify_action a) = PublicAction
-                          | End _::[] -> (is_succ_independant d' d)
+                          | Output _::[] -> (*(is_succ_independant d' d) &&*) (classify_action a) = PublicAction
+                          | End _::[] -> (*(is_succ_independant d' d)*) true
                           |  _ -> false
                )
                ) d in
