@@ -539,7 +539,7 @@ let rec traces p =
                    | _ -> false
                ) else *)(
                  match a with 
-                          | Output _::_ -> Printf.printf "id : %d %s -> %b\n" id (show_action (List.hd a)) (is_succ_independant d' d); (is_succ_independant d' d) && (classify_action a) = PublicAction
+                          | Output _::_ -> (is_succ_independant d' d) && (classify_action a) = PublicAction
                           | End _::_ -> (is_succ_independant d' d)
                           |  _ -> false
                )
