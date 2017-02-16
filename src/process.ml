@@ -507,11 +507,17 @@ let rec is_action_id_succ id actions =
     | _::tl -> is_action_id_succ id tl
     | [] -> false
 
+let is_succ_independant d ds =
+  match d with 
+    | (_,_,(id,r)) -> let ids = List.map (fun a -> match a with SymbAct(id,_) -> id | _ -> 0) r in 
+         List.exists (fun (_,_,(id',_)) -> List.mem id' ids) ds
+
 let rec traces p =
   let d = delta p in
-  let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ -> true | _ -> false) d in
+  (* let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
+   * true | _ -> false) d in*)
   let dout = List.filter 
-               (fun (a,b,_) -> if isPhase then (
+               (fun d' -> match d' with | (a,b,_) -> (*if isPhase then (
                  match b with 
                    | SymbPhase _ -> (
                         match a with 
@@ -520,10 +526,10 @@ let rec traces p =
                           |  _ -> false
                      )
                    | _ -> false
-               ) else (
+               ) else *)(
                  match a with 
-                          | Output _::_ -> ((classify_action a) = PublicAction)
-                          | End _::_ -> true 
+                          | Output _::_ -> (is_succ_independant d' d) && (classify_action a) = PublicAction
+                          | End _::_ -> (is_succ_independant d' d)
                           |  _ -> false
                )
                ) d in
