@@ -51,6 +51,7 @@ val show_symb : symbProcess -> string
 val parse_process : Ast.tempProcess -> (string * symbProcess) list -> symbProcess
 val action_determinate : symbProcess -> bool
 val traces : symbProcess -> process
+val traces_reachability : symbProcess -> process
 
 (** {2 Executing and testing processes} *)
 

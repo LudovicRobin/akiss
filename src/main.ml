@@ -237,9 +237,12 @@ let guess_reach_trace t =
 let query_correspondence ?(expected=true) p =
     Printf.printf
     "Checking correspondance for the following traces.\n%s\n%!" (show_string_list p);
-    let ttraces = List.concat (List.rev_map (fun x -> traces @@ List.assoc x !processes) p) in
+    let ttraces = List.concat (List.rev_map (fun x -> traces_reachability @@ List.assoc x !processes) p) in
+    verboseOutput "Traces base:\n===\n"; 
+    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ttraces;
     let ftraces = List.filter (fun x -> is_trace_contains_corres_end x) ttraces in
-
+    verboseOutput "Traces containing end:\n===\n"; 
+    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ftraces;
 
     let rtraces = List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) ftraces) in
     let traces_to_check = traces_auto_guess_enhance rtraces in

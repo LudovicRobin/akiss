@@ -513,7 +513,98 @@ let is_succ_independant d ds =
          not(List.exists (fun (_,_,(id',r')) ->
             List.mem id (List.map (fun a -> match a with SymbAct(id,_) -> id | _ -> 0)r')) ds)
 
+let rec is_rem_end sp = 
+    List.exists (fun x -> match x with SymbAct(_,End(_)::_) -> true | _ -> false) (actions_id_of sp)
+
+
+let rec traces_reachability p =
+  (*Printf.printf "===\n%s\n===\n" (show_symb p);*)
+  let d = delta p in
+  
+  let event_first = (List.filter (fun (a,_,_) -> match a with Event::_ -> true | _ -> false) d) in
+  if event_first <> [] then ( 
+      let r = List.fold_left (fun accu (a,_,_) ->  
+                               TraceSet.add (trace_prepend a NullTrace) accu)
+        TraceSet.empty event_first 
+      in 
+        if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+    ) 
+  else (
+  let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
+   true | _ -> false) d in
+  let dout = List.filter 
+               (fun d' -> match d' with | (a,b,(id,r)) -> if isPhase then (
+                 match b with 
+                   | SymbPhase _ -> (
+                        match a with 
+                          | Output _::[] -> ((classify_action a) = PublicAction)
+                          | End _::[] -> true 
+                          |  _ -> false
+                     )
+                   | _ -> false
+               ) else (
+                 match a with 
+                          | Output _::[] -> (*(is_succ_independant d' d) &&*) (classify_action a) = PublicAction
+                          | End _::[] -> (*(is_succ_independant d' d)*) true
+                          |  _ -> false
+               )
+               ) d in
+    (*Printf.printf "Prioritize\n";
+    List.iter (fun (a,_,_) -> Printf.printf "Prio Candidate : %s\n" (show_action(List.hd a))) dout;*)
+    if dout <> [] && !Theory.reachability_only then (
+      let r = List.fold_left (fun accu (a,q,_) -> 
+                                match a with 
+                                  | End _::_ when (not(is_rem_end q)) -> (
+                                                       TraceSet.add (trace_prepend a (NullTrace)) accu
+                                    )
+                                      | _ -> ( 
+                                TraceSet.fold (fun q accu -> 
+                               TraceSet.add (trace_prepend a q) accu
+      ) (traces_reachability q) accu)
+      )
+        TraceSet.empty dout
+      in 
+        if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+    )
+    else (
+      let r =
+        List.fold_left 
+          (fun accu (a, q, (id,r)) ->
+             match classify_action a with
+               | PublicAction ->
+                   TraceSet.fold (fun q accu ->
+                                    TraceSet.add (trace_prepend a q) accu
+                   ) (traces_reachability q) accu
+               | PrivateInput (_, _) -> accu
+               | PrivateOutput (c, t) -> (
+                   List.fold_left 
+                     (fun accu (a, _, (id',r')) ->
+                        match classify_action a with
+                          | PrivateInput (c', x) when c = c' ->
+                              if (is_action_id_succ id' r) then accu
+                              else (
+                              List.fold_left 
+                                (fun accu (a, q, _) ->
+                                   match classify_action a with
+                                     | PrivateInput (c', x') when x = x' ->
+                                         assert (c = c');
+                                         TraceSet.fold (fun q accu ->
+                                                          TraceSet.add q accu
+                                         ) (traces_reachability (replace_var_in_symb x t q)) accu
+                                     | _ -> accu
+                                ) accu (delta q)
+                              )
+                          | _ -> accu
+                     ) accu d
+                 )
+    ) TraceSet.empty d
+  in
+  if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+  )
+    )
+
 let rec traces p =
+  (*Printf.printf "===\n%s\n===\n" (show_symb p);*)
   let d = delta p in
   
   let event_first = if !Theory.reachability_only then (List.filter (fun (a,_,_) -> match a with Event::_ -> true | _ -> false) d) else [] in
@@ -544,6 +635,8 @@ let rec traces p =
                           |  _ -> false
                )
                ) d in
+    (*Printf.printf "Prioritize\n";
+    List.iter (fun (a,_,_) -> Printf.printf "Prio Candidate : %s\n" (show_action(List.hd a))) dout;*)
     if dout <> [] && !Theory.reachability_only then (
       let r = List.fold_left (fun accu (a,q,_) -> TraceSet.fold (fun q accu -> 
                                TraceSet.add (trace_prepend a q) accu
@@ -697,6 +790,9 @@ let traces_por p =
                TraceSet.union s (aux t))
             s1 TraceSet.empty
     | _ -> traces_por p
+
+let traces_reachability p =  
+  TraceSet.elements @@ traces_reachability @@ simplify @@ optimize_tests p
 
 let traces p =
   let traces = if !Theory.por then traces_por else traces in
