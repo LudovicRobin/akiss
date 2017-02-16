@@ -539,8 +539,8 @@ let rec traces p =
                    | _ -> false
                ) else *)(
                  match a with 
-                          | Output _::_ -> (is_succ_independant d' d) && (classify_action a) = PublicAction
-                          | End _::_ -> (is_succ_independant d' d)
+                          | Output _::[] -> (is_succ_independant d' d) && (classify_action a) = PublicAction
+                          | End _::[] -> (is_succ_independant d' d)
                           |  _ -> false
                )
                ) d in
