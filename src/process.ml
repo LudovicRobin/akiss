@@ -510,8 +510,8 @@ let rec is_action_id_succ id actions =
 let is_succ_independant d ds =
   match d with 
     | (_,_,(id,r)) ->  
-         List.for_all (fun (_,_,(id',r')) ->
-            (id = id' || (List.mem id (List.map (fun a -> match a with SymbAct(id,_) -> id )r')))) ds
+         not(List.exists (fun (_,_,(id',r')) ->
+            List.mem id (List.map (fun a -> match a with SymbAct(id,_) -> id | _ -> 0)r')) ds)
 
 let rec traces p =
   let d = delta p in
