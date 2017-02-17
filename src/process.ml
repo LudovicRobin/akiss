@@ -478,13 +478,13 @@ let rec delta = function
   | SymbAlt (p1, p2) -> delta p1 @ delta p2
   | SymbPar (p1, p2) ->
      let s1 =
-       List.fold_left (fun accu (a, p, (i,_)) ->
-         (a, simplify (SymbPar (p, p2)), (i,actions_id_of p)) :: accu
+       List.fold_left (fun accu (a, p, (i,r)) ->
+         (a, simplify (SymbPar (p, p2)), (i,r)) :: accu
        ) [] (delta p1)
      in
      let s2 =
-       List.fold_left (fun accu (a, p, (i,_)) ->
-         (a, simplify (SymbPar (p1, p)), (i,actions_id_of p)) :: accu
+       List.fold_left (fun accu (a, p, (i,r)) ->
+         (a, simplify (SymbPar (p1, p)), (i,r)) :: accu
        ) s1 (delta p2)
      in
      s2
