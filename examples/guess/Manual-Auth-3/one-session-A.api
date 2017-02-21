@@ -28,7 +28,7 @@ Alice = in(CA,XA1).
         out(CA,hash(k)).
         (out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].
-        (out(OAH,sh(XA1,hash(k))) || out(CA,sh(XA1,hash(k))).
+        (out(OAH,sh(XA1,k)) || out(CA,sh(XA1,k)).
         out(CA,k).
         in(OHA,XA3).[XA3=accept].end(XA1)
         ));
@@ -43,7 +43,7 @@ Bob = in(CB,XB1).
       [hash(XB5)=XB2].
       [sh(XB1,XB5)=XB4].
       (out(OBH,accept) ||
-      end(XB1).0
+      0
       ));
 
 
