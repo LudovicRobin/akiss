@@ -1,0 +1,63 @@
+/*
+   Manual authentication 3 
+*/
+
+symbols d/0, dd/0, short/2, hash/1, bruteforce/2, pair/2, fst/1, snd/1,
+BADSTATE/0, ACK/0;
+
+private k;
+channels C;
+privchannels O1,O2,O3,O;
+var X, Y, X1, X2, Y1, Y2, Yn, x, y, z;
+
+rewrite short(bruteforce(Y, short(X1,Y1)),Y) -> short(X1,Y1);
+rewrite short(X,bruteforce(X, short(X1,Y1))) -> short(X1,Y1);
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1a.  ->A  : d_A */
+/* 1b.  ->B  : d_B */
+/* 2a.  A=>H : hash(k) */
+/* 2a.  A->B : hash(k) */
+/* 2b.  B=>H : hash(k) */
+/* 3a.  A=>H : ready */
+/* 3b.  B=>H : ready */
+/* 4.   H=>A : start */
+/* 5.   A=>H : short(d,hash(k)) */
+/* 6.   H=>B : short(d,hash(k)) */
+/* 7.   A->B : k */
+/* 8.   B=>H : accept */
+/* 9.   H=>A : accept */
+
+Alice = in(CA,XA1).
+        (out(OAH,sh(k)) || 
+        out(CA,sh(k)).
+        (out(OAH,ready) ||
+        in(OHA,XA2).[XA2=start].begin(XA1).
+        (out(OAH,hash(d,sh(k))) || out(CA,hash(d,sh(k))).
+        out(CA,k).
+        in(OHA,XA3).[XA3=accept]
+        )));
+
+Bob = in(CB,XB1).
+      in(CB,XB2).
+      (out(OBH,XB2) || out(CB,XB2).
+      in(OHB,XB3).[XB3=ready].
+      in(OHB,XB4).
+      in(CB,XB5).
+      [sh(XB1,hash(XB5))=XB4].
+      (out(OBH,accept) || end(XB1).0
+      ));
+
+H = (in(OAH,XH1) || in(OBH,XH2)) :: [XH1=XH2] ::
+    in(OAH,XH3).[XH3=ready] || in(OBH,XH4).[XH4=ready]
+    (out(OHA,start) ||
+    in(OAH,XH5).
+    (out(OHB,XH5) || out(CH,XH5).
+    in(OBH,XH6).[XH6=accept].
+    (out(OHA,accept) || 0
+    )));
+
+P = (Alice || Bob || H);
+
+guessreachable? P;
