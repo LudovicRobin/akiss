@@ -40,8 +40,8 @@ Bob   = in(CB,XB1).
         in(CB,XB3).
         in(CB,XB4).
         [hash(XB1,XB3,XB4)=XB2].
-        (out(OBH,r) || out(CB,r).
-        in(OHB,XB4).[XB4=accept].end(XB1)
+        (out(OBH,XB4) || out(CB,XB4).
+        in(OHB,XB5).[XB5=accept].end(XB1)
         ));
 
 H     = (in(OAH,XH1).[XH1=ready] ||

@@ -12,18 +12,18 @@ var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 
 /* 1a.  ->A : d_A */
 /* 1b.  ->B : d_B */
-/* 2.  A->B : hash(d_a,k,R) */
+/* 2.  A->B : hash(d_a,k,r) */
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
 /* 4.  H=>A : start */
 /* 5.  A->B  : k */
-/* 6.  A->B  : R */
+/* 6.  A->B  : r */
 /* 7a. A=>H : r */
 /* 7b. B=>H : r */
 /* 8a. H=>A : accept */
 /* 8b. H=>B : accept */
 
-Alice = in(CA,XA1).
+Alice = in(CA,XA1).  // in d_A 
         out(CA,hash(XA1,k,r)).
         (out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].
@@ -33,25 +33,22 @@ Alice = in(CA,XA1).
         in(OHA,XA3).[XA3=accept].end(XA1)
         ));
 
-Bob   = in(CB,XB1).
-        in(CB,XB2).
-        (out(OBH,ready) ||
-        in(CB,XB3).
-        in(CB,XB4).
+Bob   = in(CB,XB1). // in d_B
         begin(XB1).
+        in(CB,XB2). //  hash(d_a,k,r)
+        (out(OBH,ready) ||
+        in(CB,XB3). // k
+        in(CB,XB4). // r
         [hash(XB1,XB3,XB4)=XB2].
-        (out(OBH,r) || out(CB,r).
-        in(OHB,XB4).[XB4=accept]
+        (out(OBH,XB4) || out(CB,XB4).
+        in(OHB,XB5).[XB5=accept]
         ));
 
-H     = (in(OAH,XH1).[XH1=ready] ||
-        in(OBH,XH2).[XH2=ready]) ::
-        (out(OHA,start) ||
-        (in(OAH,XH3) || in(OBH,XH4)) ::
-        [XH3=XH4].
-        (out(OHA,accept) || out(OHB,accept) || 0)
-        );
+H     = (in(OAH,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready]) ::
+        (out(OHA,start) || (in(OAH,XH3) || in(OBH,XH4)) ::
+        [XH3=XH4]. (out(OHA,accept) || out(OHB,accept)) );
 
 P = (Alice || Bob || H);
 
 correspondence? P;
+
