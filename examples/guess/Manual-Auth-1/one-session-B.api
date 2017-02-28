@@ -29,7 +29,7 @@ Alice = in(CA,XA1).(out(OAH,ready) ||
         ));
         
 Bob   = in(CB,XB1).(out(OBH,ready) ||
-        begin(XB1).in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].
+        in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].
         (out(OBH,accept) || end(XB1).0
         ));
 
