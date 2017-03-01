@@ -2,34 +2,32 @@
    Manual authentication 5 
 */
 
-symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
+symbols ready/0, accept/0, hs/2, hash/1, bf/2;
 
 private k;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 
-rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
-rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
+rewrite hs(bf(Y, hs(X1,Y1)),Y) -> hs(X1,Y1);
+rewrite hs(X,bf(X, hs(X1,Y1))) -> hs(X1,Y1);
 
 /* 1a.  ->A : d_A */
 /* 1b.  ->B : d_B */
 /* 2.  A->B : hash(k) */
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
-/* 4.  H=>A : start */
-/* 5.  A->B  : k */
-/* 6a. A=>H : short(d,k) */
-/* 6b. B=>H : short(d,k) */
-/* 7.  H=>A : accept */
-/* 7.  H=>B : accept */
+/* 4.  A->B  : k */
+/* 5a. A=>H : hsort(d,k) */
+/* 5b. B=>H : hsort(d,k) */
+/* 6.  H=>A : accept */
+/* 6.  H=>B : accept */
 
 Alice = in(CA,XA1).
         out(CA,hash(k)).
         (out(OAH,ready) ||
-        in(OHA,XA2).[XA2=start].
         out(CA,k).
-        (out(OAH,sh(XA1,k)) || out(CA,sh(XA1,k)).
+        (out(OAH,hs(XA1,k)) || out(CA,hs(XA1,k)).
         in(OHA,XA3).[XA3=accept].end(XA1)
         ));
 
@@ -39,17 +37,16 @@ Bob   = in(CB,XB1).
         in(CB,XB3).
         [hash(XB3)=XB2].
         begin(XB1).
-        (out(OBH,sh(XB1,XB3)) || out(CB,sh(XB1,XB3)).
+        (out(OBH,hs(XB1,XB3)) || out(CB,hs(XB1,XB3)).
         in(OHB,XB4).[XB4=accept]
         ));
 
 H     = (in(OAH,XH1).[XH1=ready] ||
         in(OBH,XH2).[XH2=ready]) ::
-        (out(OHA,start) ||
         (in(OAH,XH3) || in(OBH,XH4)) ::
         [XH3=XH4].
         (out(OHA,accept) || out(OHB,accept))
-        );
+        ;
 
 P = (Alice || Bob || H);
 

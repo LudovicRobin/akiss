@@ -2,24 +2,20 @@
    Manual authentication 3 
 */
 
-symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
+symbols ready/0, accept/0, h/2, hash/1, bf/2;
 
 private k;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 
-rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
-rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1); 
-
 /* 1a.  ->A  : d_A */
 /* 1b.  ->B  : d_B */
 /* 2a.  A->B : hash(k) */
 /* 3a.  A=>H : ready */
 /* 3b.  B=>H : ready */
-/* 4.   H=>A : start */
-/* 5.   A=>H : short(d,k) */
-/* 6.   H=>B : short(d,k) */
+/* 5.   A=>H : h(d,k) */
+/* 6.   H=>B : h(d,k) */
 /* 7.   A->B : k */
 /* 8.   B=>H : accept */
 /* 9.   H=>A : accept */
@@ -27,8 +23,7 @@ rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 Alice = in(CA,XA1).
         out(CA,hash(k)).
         (out(OAH,ready) ||
-        in(OHA,XA2).[XA2=start].
-        (out(OAH,sh(XA1,k)) || out(CA,sh(XA1,k)).
+        (out(OAH,h(XA1,k)) || out(CA,h(XA1,k)).
         out(CA,k).
         in(OHA,XA3).[XA3=accept].end(XA1)
         ));
@@ -41,19 +36,18 @@ Bob = in(CB,XB1).
       begin(XB1).
       in(CB,XB5).  // receive k
       [hash(XB5)=XB2].
-      [sh(XB1,XB5)=XB4].
+      [h(XB1,XB5)=XB4].
       (out(OBH,accept)
       ));
 
 
 H = (in(OAH,XH1).[XH1=ready] ||
     in(OBH,XH2).[XH2=ready]) ::
-    (out(OHA,start) ||
     in(OAH,XH3).
     (out(OHB,XH3) || out(CH,XH3).
     in(OBH,XH4).[XH4=accept]. 
     (out(OHA,accept) || 0
-    )));
+    ));
 
 P = (Alice || Bob || H);
 

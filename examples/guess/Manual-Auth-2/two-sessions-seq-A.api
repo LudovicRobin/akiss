@@ -1,0 +1,68 @@
+/*
+  Manual authentication 2 
+
+Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
+start session 2 at any moment.
+Result: An attack has been found ??
+*/
+
+symbols sh/2, bruteforce/2, ok/0, pair/2, fst/1, snd/1, ready/0, start/0;
+
+private  k1, k2;
+channels CA1, CA2, CB1, CB2;
+privchannels OAH1, OAH2, OHA1, OHA2, OBH1, OBH2, OHB;
+var X,Y, X1,Y1, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4, YA1, YA2, YA3, YB1, YB2, YB3, YB4, YH1, YH2, YH3, YH4;
+
+
+rewrite sh(bruteforce(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bruteforce(X, sh(X1,Y1))) -> sh(X1,Y1); 
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1.  ->A  : dA */
+/* 2.  ->B  : dB */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 5. H=>A  : START */
+/* 6. A->B  : k */
+/* 7. A=>H  : k, short(k,dA) */
+/* 8. B=>H  : k, short(k,dB) */
+/* 9. H checks equality between the two previous messages */
+/* 10.H=>A : ok */
+/* 11.H=>B : ok */
+
+
+Alice1 = in(CA1,XA1).(out(OAH1,ready)
+		|| in(OHA1,XA2).[XA2=start].out(CA1,k1).(out(OAH2,pair(k1,sh(k1,XA1)))
+ 		 				   || out(CA1,pair(k1,sh(k1,XA1))).in(OHA2,XA3).[XA3=ok].end(XA1)));
+
+
+Alice2 = in(CA2,YA1).(out(OAH1,ready)
+		|| in(OHA1,YA2).[YA2=start].out(CA2,k2).(out(OAH2,pair(k2,sh(k2,YA1)))
+ 		 				   || out(CA2,pair(k2,sh(k2,YA1))).in(OHA2,YA3).[YA3=ok].end(YA1)));
+
+Bob1 = in(CB1,XB1).(out(OBH1,ready)
+               || in(CB1,XB2).(begin(XB1).out(OBH2,pair(XB2,sh(XB2,XB1)))
+	                   || out(CB1,pair(XB2,sh(XB2,XB1))).in(OHB,XB3).[XB3=ok]));
+			   
+
+Bob2 = in(CB2,YB1).(out(OBH1,ready)
+               || in(CB2,YB2).(begin(YB1).out(OBH2,pair(YB2,sh(YB2,YB1)))
+	                   || out(CB2,pair(YB2,sh(YB2,YB1))).in(OHB,YB3).[YB3=ok]));
+			   
+
+H1 = (in(OAH1,XH1).[XH1=ready] || in(OBH1,XH2).[XH2=ready])::
+    (out(OHA1,start)
+    || ((in(OAH2,XH3) || in(OBH2,XH4)) :: ([XH3=XH4].(out(OHA2,ok) || out(OHB,ok)))));
+
+
+H2 = (in(OAH1,YH1).[YH1=ready] || in(OBH1,YH2).[YH2=ready])::
+    (out(OHA1,start)
+    || ((in(OAH2,YH3) || in(OBH2,YH4)) :: ([YH3=YH4].(out(OHA2,ok) || out(OHB,ok)))));
+
+						    
+P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
+
+
+correspondence? P; 
+

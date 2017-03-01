@@ -2,7 +2,7 @@
    Manual authentication 6 
 */
 
-symbols ready/0, start/0, accept/0, hash/3;
+symbols ready/0, accept/0, hash/3;
 
 weak r;
 private k;
@@ -12,21 +12,19 @@ var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 
 /* 1a.  ->A : d_A */
 /* 1b.  ->B : d_B */
-/* 2.  A->B : hash(d_a,k,r) */
+/* 2.  A->B : hash(d_a,k,R) */
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
-/* 4.  H=>A : start */
-/* 5.  A->B  : k */
-/* 6.  A->B  : R */
-/* 7a. A=>H : r */
-/* 7b. B=>H : r */
-/* 8a. H=>A : accept */
-/* 8b. H=>B : accept */
+/* 4.  A->B  : k */
+/* 5.  A->B  : R */
+/* 6a. A=>H : r */
+/* 6b. B=>H : r */
+/* 7a. H=>A : accept */
+/* 7b. H=>B : accept */
 
 Alice = in(CA,XA1).
         out(CA,hash(XA1,k,r)).
         (out(OAH,ready) ||
-        in(OHA,XA2).[XA2=start].
         begin(XA1).
         out(CA,k).
         out(CA,r).
@@ -46,11 +44,10 @@ Bob   = in(CB,XB1).
 
 H     = (in(OAH,XH1).[XH1=ready] ||
         in(OBH,XH2).[XH2=ready]) ::
-        (out(OHA,start) ||
         (in(OAH,XH3) || in(OBH,XH4)) ::
         [XH3=XH4].
         (out(OHA,accept) || out(OHB,accept) || 0)
-        );
+        ;
 
 P = (Alice || Bob || H);
 

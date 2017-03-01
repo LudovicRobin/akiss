@@ -1,0 +1,84 @@
+/*
+   Manual authentication 5 
+*/
+
+symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
+
+private k1,k2;
+channels CA,CB,CH;
+privchannels OAH,OBH,OHA,OHB;
+var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,YA1,YA2,YA3,YB1,YB2,YB3,YB4,YB5,YH1,YH2,YH3,YH4;
+
+
+rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
+
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
+/* 2.  A->B : hash(k) */
+/* 3a. A=>H : ready */
+/* 3b. B=>H : ready */
+/* 4.  H=>A : start */
+/* 5.  A->B  : k */
+/* 6a. A=>H : short(d,k) */
+/* 6b. B=>H : short(d,k) */
+/* 7.  H=>A : accept */
+/* 7.  H=>B : accept */
+
+Alice1 = in(CA,XA1).
+        out(CA,hash(k1)).
+        (out(OAH,ready) ||
+        in(OHA,XA2).[XA2=start].
+        out(CA,k1).
+        (out(OAH,sh(XA1,k1)) || out(CA,sh(XA1,k1)).
+        in(OHA,XA3).[XA3=accept].end(XA1)
+        ));
+
+Bob1   = in(CB,XB1).
+        in(CB,XB2).
+        (out(OBH,ready) ||
+        in(CB,XB3).
+        [hash(XB3)=XB2].
+        begin(XB1).
+        (out(OBH,sh(XB1,XB3)) || out(CB,sh(XB1,XB3)).
+        in(OHB,XB4).[XB4=accept]
+        ));
+
+H1     = (in(OAH,XH1).[XH1=ready] ||
+        in(OBH,XH2).[XH2=ready]) ::
+        (out(OHA,start) ||
+        (in(OAH,XH3) || in(OBH,XH4)) ::
+        [XH3=XH4].
+        (out(OHA,accept) || out(OHB,accept))
+        );
+
+Alice2 = in(CA,YA1).
+        out(CA,hash(k2)).
+        (out(OAH,ready) ||
+        in(OHA,YA2).[YA2=start].
+        out(CA,k2).
+        (out(OAH,sh(YA1,k2)) || out(CA,sh(YA1,k2)).
+        in(OHA,YA3).[YA3=accept].end(YA1)
+        ));
+
+Bob2   = in(CB,YB1).
+        in(CB,YB2).
+        (out(OBH,ready) ||
+        in(CB,YB3).
+        [hash(YB3)=YB2].
+        begin(YB1).
+        (out(OBH,sh(YB1,YB3)) || out(CB,sh(YB1,YB3)).
+        in(OHB,YB4).[YB4=accept]
+        ));
+
+H2     = (in(OAH,YH1).[YH1=ready] ||
+        in(OBH,YH2).[YH2=ready]) ::
+        (out(OHA,start) ||
+        (in(OAH,YH3) || in(OBH,YH4)) ::
+        [YH3=YH4].
+        (out(OHA,accept) || out(OHB,accept))
+        );
+
+P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
+
+c

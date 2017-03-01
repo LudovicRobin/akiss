@@ -1,0 +1,59 @@
+/*
+   Manual authentication 4
+
+
+Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
+Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
+start session 2 at any moment.
+Result: An attack has been found ?? 
+*/
+
+symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+
+private k1, k2;
+weak r1, r2;
+channels CA1,CA2, CB1, CB2, CH1, CH2;
+privchannels OAH1, OAH2, OHA1,OHA2, OBH, OHB;
+var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4,YA1, YA2, YA3, YB1, YB2, YB3, YB4, YH1, YH2, YH3, YH4;
+
+
+/* 1. A->B  : d, h(d,k,r) */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 4. H=>A  : START */
+/* 5. A=>H  : r */
+/* 6. H=>B  : r */
+/* 7. A->B  : k */
+/* 8. B=>H  : OK */
+/* 9. H=>A  : OK */
+
+
+Alice1 =in(CA1,XA1).out(CA1,h(XA1,k1,r1)).(out(OAH1,ready)
+				  || in(OHA1,XA2).[XA2=start].(begin(XA1).out(OAH2,r1)
+				                         || out(CA1,r1).out(CA1,k1).in(OHA2,XA3).[XA3=ok]));
+
+Alice2 =in(CA2,YA1).out(CA2,h(YA1,k2,r2)).(out(OAH1,ready)
+				  || in(OHA1,YA2).[YA2=start].(begin(YA1).out(OAH2,r2)
+				                         || out(CA2,r2).out(CA2,k2).in(OHA2,YA3).[YA3=ok]));
+
+
+Bob1 = in(CB1,XB1).in(CB1,XB2).(out(OBH,ready)
+                          || in(OHB,XB3).in(CB1,XB4).[XB2=h(XB1,XB4,XB3)].out(OBH,ok).end(XB1));
+
+Bob2 = in(CB2,YB1).in(CB2,YB2).(out(OBH,ready)
+                          || in(OHB,YB3).in(CB2,YB4).[YB2=h(YB1,YB4,YB3)].out(OBH,ok).end(YB1));
+
+
+H1 = (in(OAH1,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready])::(out(OHA1,start)
+                                                  || in(OAH2,XH3).(out(OHB,XH3)
+							       || out(CH1,XH3).in(OBH,XH4).[XH4=ok].out(OHA2,ok)));
+
+H2 = (in(OAH1,YH1).[YH1=ready] || in(OBH,YH2).[YH2=ready])::(out(OHA1,start)
+                                                  || in(OAH2,YH3).(out(OHB,YH3)
+							       || out(CH2,YH3).in(OBH,YH4).[YH4=ok].out(OHA2,ok)));
+
+/*P = (Alice1::Alice2) || (Bob1::Bob2) || (H1::H2); */
+
+P = (Alice1 || Bob1 || H1) >> (Alice2  || Bob2 || H2);
+
+correspondence? P;

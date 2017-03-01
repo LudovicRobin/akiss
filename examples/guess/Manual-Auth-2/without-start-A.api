@@ -1,0 +1,52 @@
+/*
+   Manual authentication 2 (without start)
+
+Security property: When A ends her session with d=XA1 then B has almost finished his session with XB1=XA1.
+Scenario: 1 session of each role.
+Result: An attack has been found. Indeed, once k is known, it is possible to
+bruteforce  sh(k,dA) to come with another value dB (different from dA) such that sh(k,dB) = sh(k,dA).
+*/
+
+symbols sh/2, bruteforce/2, ok/0, pair/2, fst/1, snd/1, ready/0, start/0;
+
+weak  k;
+channels CA, CB, CH;
+privchannels OAH1, OAH2, OHA1, OHA2, OBH1, OBH2, OHB;
+var X,Y,X1,Y1, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4;
+
+
+
+rewrite sh(bruteforce(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bruteforce(X, sh(X1,Y1))) -> sh(X1,Y1); 
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1.  ->A  : dA */
+/* 2.  ->B  : dB */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 5. H=>A  : START */
+/* 6. A->B  : k */
+/* 7. A=>H  : k, short(k,dA) */
+/* 8. B=>H  : k, short(k,dB) */
+/* 9. H checks equality between the two previous messages */
+/* 10.H=>A : ok */
+/* 11.H=>B : ok */
+
+
+Alice = in(CA,XA1).out(OAH1,ready).out(CA,k).(out(OAH2,pair(k,sh(k,XA1)))
+ 		 				                       || out(CA,pair(k,sh(k,XA1))).in(OHA2,XA3).[XA3=ok].end(XA1));
+
+Bob = in(CB,XB1).(out(OBH1,ready)
+               || in(CB,XB2).(begin(XB1).out(OBH2,pair(XB2,sh(XB2,XB1)))
+	                   || out(CB,pair(XB2,sh(XB2,XB1))).in(OHB,XB3).[XB3=ok]));
+
+
+H = (in(OAH1,XH1).[XH1=ready] || in(OBH1,XH2).[XH2=ready])::
+    (out(OHA1,start)
+    || ((in(OAH2,XH3) || in(OBH2,XH4)) :: ([XH3=XH4].(out(OHA2,ok) || out(OHB,ok)))));
+
+P = Alice || Bob || H;
+
+correspondence? P; 
+

@@ -1,0 +1,102 @@
+/*
+   Manual authentication 7
+*/
+
+symbols IA/0,IB/0,ready/0, start/0, accept/0, hash/4;
+
+weak r1,r2;
+private kA1,kB1,kA2,kB2;
+channels CA,CB,CH;
+privchannels OAH,OBH,OHA,OHB;
+var X,Y,X1,Y1,XA1,XA2,XA3,XA4,XA5,XA6,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,YA1,YA2,YA3,YA4,YA5,YA6,YB1,YB2,YB3,YB4,YB5,YH1,YH2,YH3,YH4;
+
+/* 1a.  ->A : dA */
+/* 1b.  ->B : dB */
+/* 2.  H=>A : r */
+/* 2.  H=>B : r */
+/* 2.  A=>H : ready */
+/* 2.  B=>H : ready */
+/* 2.  H=>A : start */
+/* 2a. A->B : hash(dA,kA,r) */
+/* 2b. B->A : hash(dB,kB,r) */
+/* 3.  A->B : kA */
+/* 4.  B->A : kB */
+/* 5a. B=>H : accept */
+/* 5b. A=>H : accept */
+/* 6a. H=>A : accept */
+/* 6b. H=>B : accept */
+
+Alice1 = in(CA,XA1).
+        in(OHA,XA2).
+        (out(OAH,ready) ||
+        in(OHA,XA3).[XA3=start].
+        out(CA,hash(IA,XA1,kA1,XA2)).
+        in(CA,XA4).
+        out(CA,kA1).
+        in(CA,XA5).
+        [XA4=hash(IB,XA1,XA5,XA2)].
+        (out(OAH,accept) ||
+        in(OHA,XA6).[XA6=accept].end(XA1)
+        ));
+
+Bob1   = in(CB,XB1).
+        begin(XB1).
+        in(OHB,XB2).
+        (out(OBH,ready) ||
+        out(CB,hash(IB,XB1,kB1,XB2)).
+        in(CB,XB3).
+        in(CB,XB4).
+        [XB3=hash(IA,XB1,XB4,XB2)].
+        out(CB,kB1).  
+        (out(OBH,accept) ||
+        out(CB,kB1).
+        in(OHB,XB5).[XB5=accept]
+        ));
+
+H1     = (out(OHA,r1) || (out(OHB,r1)  ||
+        (in(OAH,XH1).[XH1=ready] ||
+        in(OBH,XH2).[XH2=ready]) ::
+        (out(OHA,start) ||
+        (in(OAH,XH3).[XH3=accept] || in(OBH,XH4).[XH4=accept]) ::
+        (out(OHA,accept) || out(OHB,accept))
+        )));
+
+Alice2 = in(CA,YA1).
+        in(OHA,YA2).
+        (out(OAH,ready) ||
+        in(OHA,YA3).[YA3=start].
+        out(CA,hash(IA,YA1,kA2,YA2)).
+        in(CA,YA4).
+        out(CA,kA2).
+        in(CA,YA5).
+        [YA4=hash(IB,YA1,YA5,YA2)].
+        (out(OAH,accept) ||
+        in(OHA,YA6).[YA6=accept].end(YA1)
+        ));
+
+Bob2   = in(CB,YB1).
+        begin(YB1).
+        in(OHB,YB2).
+        (out(OBH,ready) ||
+        out(CB,hash(IB,YB1,kB2,YB2)).
+        in(CB,YB3).
+        in(CB,YB4).
+        [YB3=hash(IA,YB1,YB4,YB2)].
+        out(CB,kB2).  
+        (out(OBH,accept) ||
+        out(CB,kB2).
+        in(OHB,YB5).[YB5=accept]
+        ));
+
+H2     = (out(OHA,r2) || (out(OHB,r2)  ||
+        (in(OAH,YH1).[YH1=ready] ||
+        in(OBH,YH2).[YH2=ready]) ::
+        (out(OHA,start) ||
+        (in(OAH,YH3).[YH3=accept] || in(OBH,YH4).[YH4=accept]) ::
+        (out(OHA,accept) || out(OHB,accept))
+        )));
+
+
+P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
+
+correspondence? P;

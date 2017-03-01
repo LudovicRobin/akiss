@@ -1,0 +1,41 @@
+/*
+   Manual authentication 4 (with k weak)
+
+Security property: When A ends her session with d=XA1 then B has almost finished his session with XB1=XA1.
+Scenario: 1 session of each role.
+Result: An attack has been found. Indeed, in case both k and r are weak they are guessable once h(d,h,r) is outputted by A.
+*/
+
+symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+
+weak k, r;
+channels CA, CB, CH;
+privchannels OAH1, OAH2, OHA1, OHA2, OBH, OHB;
+var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4;
+
+
+/* 1. A->B  : d, h(d,k,r) */
+/* 2. A=>H  : READY */
+/* 3. B=>H  : READY */
+/* 4. H=>A  : START */
+/* 5. A=>H  : r */
+/* 6. H=>B  : r */
+/* 7. A->B  : k */
+/* 8. B=>H  : OK */
+/* 9. H=>A  : OK */
+
+
+Alice = in(CA,XA1).out(CA,h(XA1,k,r)).(out(OAH1,ready)
+				  || in(OHA1,XA2).[XA2=start].(out(OAH2,r)
+				                         || out(CA,r).out(CA,k).in(OHA2,XA3).[XA3=ok].end(XA1)));
+
+Bob = in(CB,XB1).in(CB,XB2).(out(OBH,ready)
+                          || in(OHB,XB3).in(CB,XB4).[XB2=h(XB1,XB4,XB3)].begin(XB1).out(OBH,ok));
+
+H = (in(OAH1,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready])::(out(OHA1,start)
+                                                  || in(OAH2,XH3).(out(OHB,XH3)
+							       || out(CH,XH3).in(OBH,XH4).[XH4=ok].out(OHA2,ok)));
+
+P = Alice || Bob || H;
+
+correspondence? P; 

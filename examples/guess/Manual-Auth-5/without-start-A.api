@@ -2,7 +2,7 @@
    Manual authentication 5 
 */
 
-symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
+symbols ready/0, accept/0, sh/2, hash/1, bf/2;
 
 private k;
 channels CA,CB,CH;
@@ -17,17 +17,15 @@ rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 /* 2.  A->B : hash(k) */
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
-/* 4.  H=>A : start */
-/* 5.  A->B  : k */
-/* 6a. A=>H : short(d,k) */
-/* 6b. B=>H : short(d,k) */
-/* 7.  H=>A : accept */
-/* 7.  H=>B : accept */
+/* 4.  A->B  : k */
+/* 5a. A=>H : short(d,k) */
+/* 5b. B=>H : short(d,k) */
+/* 6.  H=>A : accept */
+/* 6.  H=>B : accept */
 
 Alice = in(CA,XA1).
         out(CA,hash(k)).
         (out(OAH,ready) ||
-        in(OHA,XA2).[XA2=start].
         out(CA,k).
         (out(OAH,sh(XA1,k)) || out(CA,sh(XA1,k)).
         in(OHA,XA3).[XA3=accept].end(XA1)
@@ -45,11 +43,10 @@ Bob   = in(CB,XB1).
 
 H     = (in(OAH,XH1).[XH1=ready] ||
         in(OBH,XH2).[XH2=ready]) ::
-        (out(OHA,start) ||
         (in(OAH,XH3) || in(OBH,XH4)) ::
         [XH3=XH4].
         (out(OHA,accept) || out(OHB,accept))
-        );
+        ;
 
 P = (Alice || Bob || H);
 

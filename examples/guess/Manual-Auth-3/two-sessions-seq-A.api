@@ -7,7 +7,8 @@ symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
 private k;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
-var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
+var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,
+              YA1,YA2,YA3,YB1,YB2,YB3,YB4,YB5,YH1,YH2,YH3,YH4;
 
 rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
 rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1); 
@@ -24,7 +25,7 @@ rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 /* 8.   B=>H : accept */
 /* 9.   H=>A : accept */
 
-Alice = in(CA,XA1).
+Alice1 = in(CA,XA1).
         out(CA,hash(k)).
         (out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].
@@ -34,7 +35,7 @@ Alice = in(CA,XA1).
         ));
 
 
-Bob = in(CB,XB1).
+Bob1 = in(CB,XB1).
       in(CB,XB2).
       (out(OBH,ready) ||
       in(OHB,XB4). //receive digest
@@ -46,7 +47,7 @@ Bob = in(CB,XB1).
       ));
 
 
-H = (in(OAH,XH1).[XH1=ready] ||
+H1 = (in(OAH,XH1).[XH1=ready] ||
     in(OBH,XH2).[XH2=ready]) ::
     (out(OHA,start) ||
     in(OAH,XH3).
@@ -55,6 +56,38 @@ H = (in(OAH,XH1).[XH1=ready] ||
     (out(OHA,accept) || 0
     )));
 
-P = (Alice || Bob || H);
+Alice2 = in(CA,YA1).
+        out(CA,hash(k)).
+        (out(OAH,ready) ||
+        in(OHA,YA2).[YA2=start].
+        (out(OAH,sh(YA1,k)) || out(CA,sh(YA1,k)).
+        out(CA,k).
+        in(OHA,YA3).[YA3=accept].end(YA1)
+        ));
+
+
+Bob2 = in(CB,YB1).
+      in(CB,YB2).
+      (out(OBH,ready) ||
+      in(OHB,YB4). //receive digest
+      begin(YB1).
+      in(CB,YB5).  // receive k
+      [hash(YB5)=YB2].
+      [sh(YB1,YB5)=YB4].
+      (out(OBH,accept)
+      ));
+
+
+H2 = (in(OAH,YH1).[YH1=ready] ||
+    in(OBH,YH2).[YH2=ready]) ::
+    (out(OHA,start) ||
+    in(OAH,YH3).
+    (out(OHB,YH3) || out(CH,YH3).
+    in(OBH,YH4).[YH4=accept]. 
+    (out(OHA,accept) || 0
+    )));
+
+
+P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
 
 correspondence? P;
