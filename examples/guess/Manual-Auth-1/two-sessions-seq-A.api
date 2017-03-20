@@ -1,0 +1,61 @@
+/*
+   Manual authentication 1 
+*/
+
+symbols ready/0, start/0, accept/0, sh/2, bf/2, pair/2, fst/1, snd/1;
+
+weak k1,k2;
+channels CA, CB;
+privchannels OAH, OHA, OBH, OAB;
+var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XH1,XH2,XH3,
+    YA1,YA2,YA3,YB1,YB2,YH1,YH2,YH3;
+
+rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
+rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
+rewrite fst(pair(X,Y)) -> X;
+rewrite snd(pair(X,Y)) -> Y;
+
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
+/* 2a. A=>H : ready */
+/* 2b. B=>H : ready */
+/* 3.  H=>A : start */
+/* 4.  A=>B : (k,sh(k,d_A)) */
+
+Alice1 = in(CA,XA1).(out(OAH,ready) ||
+        in(OHA,XA2).[XA2=start].
+        (out(OAB,pair(k1,sh(k1,XA1))) || out(CA,pair(k1,sh(k1,XA1))).
+        in(OHA,XA3).[XA3=accept].end(XA1)
+        ));
+        
+Bob1   = in(CB,XB1).(out(OBH,ready) ||
+        begin(XB1).
+        in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].
+        (out(OBH,accept) || 0
+        ));
+
+H1     = (in(OAH,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready])::out(OHA,start)::
+        in(OBH,XH3).[XH3=accept].
+        (out(OHA,accept) || 0
+        );
+
+Alice2 = in(CA,YA1).(out(OAH,ready) ||
+        in(OHA,YA2).[YA2=start].
+        (out(OAB,pair(k2,sh(k2,YA1))) || out(CA,pair(k2,sh(k2,YA1))).
+        in(OHA,YA3).[YA3=accept].end(YA1)
+        ));
+        
+Bob2   = in(CB,YB1).(out(OBH,ready) ||
+        begin(YB1).
+        in(OAB,YB2).[snd(YB2)=sh(fst(YB2),YB1)].
+        (out(OBH,accept) || 0
+        ));
+
+H2     = (in(OAH,YH1).[YH1=ready] || in(OBH,YH2).[YH2=ready])::out(OHA,start)::
+        in(OBH,YH3).[YH3=accept].
+        (out(OHA,accept) || 0
+        );
+
+P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
+
+correspondence? P;
