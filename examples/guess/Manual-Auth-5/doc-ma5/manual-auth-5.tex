@@ -164,10 +164,10 @@
 \multicolumn{2}{|c|}{scenario} & \# traces & time & status \\ \hline
 \multirow{2}{*}{one session} & Auth. A & 336 & 13s & ok \\ 
 & Auth. B & 246 & $<$ 10s & ok \\  \hline
-\multirow{2}{*}{without start} & Auth. A & ? & $<$ ? & ? \\ 
-& Auth. B & ? & $<$ ? & ? \\  \hline
-without start & Auth. A & ? & $<$ ? & ? \\ 
-+ h strong & Auth. B & ? & $<$ ? & ? \\  \hline
+\multirow{2}{*}{without start} & Auth. A & 271/480 & $<$ 6s & attack \\ 
+& Auth. B & 399/1098 & $<$ 10s & attack \\  \hline
+    without start & Auth. A & 480 & $<$ 3s & ok\\ 
++ h strong & Auth. B & 1098 & $<$ 7s & ok \\  \hline
 %\multirow{2}{*}{two sessions B in par.} & Auth. A & & & attack  \\ 
 %& Auth. B & & & attack  \\  \hline
 \multirow{2}{*}{two sessions} & Auth. A & ? & ? & ? \\ 

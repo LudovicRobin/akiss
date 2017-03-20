@@ -9,9 +9,6 @@ channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 
-rewrite hs(bf(Y, hs(X1,Y1)),Y) -> hs(X1,Y1);
-rewrite hs(X,bf(X, hs(X1,Y1))) -> hs(X1,Y1);
-
 /* 1a.  ->A : d_A */
 /* 1b.  ->B : d_B */
 /* 2.  A->B : hash(k) */
