@@ -81,4 +81,4 @@ H2     = (in(OAH,YH1).[YH1=ready] ||
 
 P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);
 
-c
+correspondence? P;
