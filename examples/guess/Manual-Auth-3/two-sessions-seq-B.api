@@ -4,7 +4,7 @@
 
 symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
 
-private k;
+private k1,k2;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,
@@ -26,12 +26,12 @@ rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 /* 9.   H=>A : accept */
 
 Alice1 = in(CA,XA1).
-        out(CA,hash(k)).
+        out(CA,hash(k1)).
         (out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].
         begin(XA1).
-        (out(OAH,sh(XA1,k)) || out(CA,sh(XA1,k)).  
-        out(CA,k).
+        (out(OAH,sh(XA1,k1)) || out(CA,sh(XA1,k1)).  
+        out(CA,k1).
         in(OHA,XA3).[XA3=accept]
         ));
 
@@ -56,12 +56,12 @@ H1 = (in(OAH,XH1).[XH1=ready] ||
     )));
 
 Alice2 = in(CA,YA1).
-        out(CA,hash(k)).
+        out(CA,hash(k2)).
         (out(OAH,ready) ||
         in(OHA,YA2).[YA2=start].
-        begin(XA1).
-        (out(OAH,sh(YA1,k)) || out(CA,sh(YA1,k)).  
-        out(CA,k).
+        begin(YA1).
+        (out(OAH,sh(YA1,k2)) || out(CA,sh(YA1,k2)).  
+        out(CA,k2).
         in(OHA,YA3).[YA3=accept]
         ));
 
