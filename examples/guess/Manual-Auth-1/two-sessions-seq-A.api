@@ -31,12 +31,12 @@ Alice1 = in(CA,XA1).(out(OAH,ready) ||
 Bob1   = in(CB,XB1).(out(OBH,ready) ||
         begin(XB1).
         in(OAB,XB2).[snd(XB2)=sh(fst(XB2),XB1)].
-        (out(OBH,accept) || 0
+        (out(OBH,accept)
         ));
 
 H1     = (in(OAH,XH1).[XH1=ready] || in(OBH,XH2).[XH2=ready])::out(OHA,start)::
         in(OBH,XH3).[XH3=accept].
-        (out(OHA,accept) || 0
+        (out(OHA,accept)
         );
 
 Alice2 = in(CA,YA1).(out(OAH,ready) ||
@@ -48,12 +48,12 @@ Alice2 = in(CA,YA1).(out(OAH,ready) ||
 Bob2   = in(CB,YB1).(out(OBH,ready) ||
         begin(YB1).
         in(OAB,YB2).[snd(YB2)=sh(fst(YB2),YB1)].
-        (out(OBH,accept) || 0
+        (out(OBH,accept)
         ));
 
 H2     = (in(OAH,YH1).[YH1=ready] || in(OBH,YH2).[YH2=ready])::out(OHA,start)::
         in(OBH,YH3).[YH3=accept].
-        (out(OHA,accept) || 0
+        (out(OHA,accept)
         );
 
 P = (Alice1 || Bob1 || H1) >> (Alice2 || Bob2 || H2);

@@ -140,12 +140,12 @@
       \nextlevel[1,4]
       \mess{$m_1 = k$}{A}{B}
       \nextlevel[1,4]
-      \mess{$m_2 = \shash(d_A,k,r)\qquad\qquad\qquad$}{A}{H}
+      \mess{$m_2 = \shash(d_A,k)\qquad\qquad\qquad$}{A}{H}
       \nextlevel[1,4]
-      \mess{$m_2 = \shash(d_A,k,r)\qquad\qquad\qquad$}{H}{B}
+      \mess{$m_2 = \shash(d_A,k)\qquad\qquad\qquad$}{H}{B}
       \nextlevel[1,5]
-      \action*{check $m_2 \stackrel{?}{=} \shash(d_B,m_1,r)$}{B}
-      \action*{check $m_2 \stackrel{?}{=} \shash(d_B,k,r)$}{A}
+      \action*{check $m_2 \stackrel{?}{=} \shash(d_B,m_1)$}{B}
+      \action*{check $m_2 \stackrel{?}{=} \shash(d_B,k)$}{A}
       \nextlevel[1,5]
       \action*{check $\hash(m_1)=m_0$}{B}
       \nextlevel[3]
@@ -170,8 +170,8 @@
 + h strong & Auth. B & 1098 & $<$ 7s & ok \\  \hline
 %\multirow{2}{*}{two sessions B in par.} & Auth. A & & & attack  \\ 
 %& Auth. B & & & attack  \\  \hline
-\multirow{2}{*}{two sessions} & Auth. A & ? & ? & ? \\ 
-& Auth. B & ? & ? & ? \\  \hline
+\multirow{2}{*}{two sessions} & Auth. A & ? & ? & stack overflow \\ 
+& Auth. B & ? & ? & stack overflow \\  \hline
 \end{tabular}
 \end{center}
 
