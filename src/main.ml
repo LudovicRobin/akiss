@@ -42,21 +42,21 @@ let reset_count new_count =
 let do_count () =
   trace_counter := !trace_counter + 1;
   normalOutput "\x0dComputed tests %d/%d%!" !trace_counter !count_traces;
-  verboseOutput
+  if !verbose_output then Format.printf
     "Finished %d-th saturation out of %d\n%!"
     !trace_counter !count_traces
 
 let do_count_tests test =
 	test_counter := !test_counter +1;
-	verboseOutput "Test %d/%d : %s \n%!" 
+	if !verbose_output then Format.printf "Test %d/%d : %s \n%!" 
 	!test_counter !count_tests (show_term test)
 
 let tests_of_trace_job t rew =
-  verboseOutput "Constructing seed statements\n%!";
+  if !verbose_output then Format.printf "Constructing seed statements\n%!";
   let seed = Seed.seed_statements t rew in
-    verboseOutput "Constructing initial kb\n%!";
+    if !verbose_output then Format.printf "Constructing initial kb\n%!";
     let kb = initial_kb seed rew in
-      verboseOutput "Saturating knowledge base\n%!";
+      if !verbose_output then Format.printf "Saturating knowledge base\n%!";
       saturate kb rew ;
       checks kb
 
@@ -69,14 +69,14 @@ let tests_of_trace show_progress t rew =
   | None -> failwith "fatal error in tests_of_trace"
 
 let gtests_of_trace_job t rew =
-  verboseOutput "Current trace: %s\n%!" (show_trace t);
-  verboseOutput "Constructing seed statements\n%!";
+  if !verbose_output then Format.printf "Current trace: %s\n%!" (show_trace t);
+  if !verbose_output then Format.printf "Constructing seed statements\n%!";
   let seed = Seed.guess_seed_statements t rew in
-    verboseOutput "Constructing initial kb\n%!";
+    if !verbose_output then Format.printf "Constructing initial kb\n%!";
     let kb = initial_kb seed rew in
-      verboseOutput "Saturating knowledge base\n%!";
+      if !verbose_output then Format.printf "Saturating knowledge base\n%!";
       guess_saturate kb rew ;
-      verboseOutput "Testing...\n";
+      if !verbose_output then Format.printf "Testing...\n";
       let gr_tests = checks_guess_reachability (trace_contains_guess t) kb (Process.trace_size t) in
       let results = (check_guess_reachability_tests t (gr_tests) Theory.rewrite_rules) in
         (results != None)
@@ -168,12 +168,12 @@ let rec remove_duplicate lst =
 
 
 let slim lst =
-	debugOutput "\nThere were %d tests in total\n" (List.length lst);
+	 if !debug_output then Format.printf "\nThere were %d tests in total\n" (List.length lst);
 	let qs = remove_duplicate lst in 
 	let qs = List.filter (fun t -> not (List.exists (fun x -> (is_smaller_reach_test t x)) qs)) qs in
 	count_tests :=  (List.length qs);
 	test_counter := 0;
-	verboseOutput "There are %d tests to check\n" (List.length qs);
+	if !verbose_output then Format.printf "There are %d tests to check\n" (List.length qs);
 	qs
 
 
@@ -198,7 +198,7 @@ let query ?(expected=true) s t =
   let () = List.iter check_free_variables straces in
   let () = List.iter check_free_variables ttraces in
   let () = reset_count ((List.length straces) + (List.length ttraces)) in
-  verboseOutput "Checking %d traces...\n%!" !count_traces;
+  if !verbose_output then Format.printf "Checking %d traces...\n%!" !count_traces;
   let stests =
     Lwt_list.rev_map_p
       (fun x -> tests_of_trace true x Theory.rewrite_rules)
@@ -238,16 +238,16 @@ let query_correspondence ?(expected=true) p =
     Printf.printf
     "Checking correspondance for the following traces.\n%s\n%!" (show_string_list p);
     let ttraces = List.concat (List.rev_map (fun x -> traces_reachability @@ List.assoc x !processes) p) in
-    verboseOutput "Traces base:\n===\n"; 
-    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ttraces;
+    if !verbose_output then Format.printf "Traces base:\n===\n"; 
+    List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) ttraces;
     let ftraces = List.filter (fun x -> is_trace_contains_corres_end x) ttraces in
-    verboseOutput "Traces containing end:\n===\n"; 
-    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) ftraces;
+    if !verbose_output then Format.printf "Traces containing end:\n===\n"; 
+    List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) ftraces;
 
     let rtraces = List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) ftraces) in
     let traces_to_check = traces_auto_guess_enhance rtraces in
-    verboseOutput "Traces to check:\n===\n"; 
-    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
+    if !verbose_output then Format.printf "Traces to check:\n===\n"; 
+    List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
 
     let () = List.iter check_free_variables traces_to_check in
     let () = reset_count (List.length traces_to_check) in
@@ -280,8 +280,8 @@ let query_guess_reach ?(expected=true) t =
 
     let traces_to_check = traces_auto_guess_enhance ttraces in
 
-    verboseOutput "Traces to check:\n===\n"; 
-    List.iteri (fun i t -> verboseOutput "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
+    if !verbose_output then Format.printf "Traces to check:\n===\n"; 
+    List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;
 
     let () = List.iter check_free_variables traces_to_check in
     let () = reset_count (List.length traces_to_check) in
@@ -448,7 +448,7 @@ let inclusion_ft ~expected s t =
 	  
 let stat_equiv frame1 frame2 rew =
   
-  verboseOutput
+  if !verbose_output then Format.printf
     "Checking static equivalence of frames %s and %s \n%!"
     (show_frame frame1) (show_frame frame2);
     
@@ -469,7 +469,7 @@ let stat_equiv frame1 frame2 rew =
   if fail1 = [] && fail2 = [] then return true
   else
     (
-      (* verboseOutput "Tests of frame1 that fail on frame2: \n %s \n" (show_tests fail1); *)
+      (* if !verbose_output then Format.printf "Tests of frame1 that fail on frame2: \n %s \n" (show_tests fail1); *)
       return false
     )
 
@@ -484,9 +484,9 @@ let check_ev_ind_test trace1 trace2 test =
         let rf2 = restrict_frame_to_channels f2 trace2 Theory.evchannels in
         stat_equiv rf1 rf2 Theory.evrewrite_rules >>= fun r ->
           if r then
-            verboseOutput "static equivalence verified\n%!"
+            if !verbose_output then Format.printf "static equivalence verified\n%!"
           else
-            verboseOutput "static equivalence not verified\n%!";
+            if !verbose_output then Format.printf "static equivalence not verified\n%!";
           return r
       with
         | Process_blocked -> return false
@@ -677,7 +677,7 @@ open Ast
 
 let processCommand = function
   | DeclProcess(name, process) ->
-    verboseOutput "Declaring process %s\n%!" name;
+    if !verbose_output then Format.printf "Declaring process %s\n%!" name;
     declare_process name process
   | QueryNegatable (expected, NegEquivalent (traceList1, traceList2)) ->
     query ~expected traceList1 traceList2

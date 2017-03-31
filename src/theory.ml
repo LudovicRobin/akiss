@@ -195,40 +195,40 @@ let process_decl = function
       declare_vars ["#X";"#Y"];
       check_atoms ()
   | DeclSymbols symbolList ->
-    verboseOutput "Declaring symbols\n%!";
+    if !verbose_output then Format.printf "Declaring symbols\n%!";
     declare_symbols symbolList;
     check_atoms ()
   | DeclChannels channelList ->
-    verboseOutput "Declaring channels\n%!";
+    if !verbose_output then Format.printf "Declaring channels\n%!";
     declare_channels channelList;
     check_atoms ()
   | DeclEvChannels evchannelList ->
-    verboseOutput "Declaring channels\n%!";
+    if !verbose_output then Format.printf "Declaring channels\n%!";
     declare_evchannels evchannelList;
     check_atoms ()
   | DeclPrivChannels privchannelList ->
-    verboseOutput "Declaring private channels\n%!";
+    if !verbose_output then Format.printf "Declaring private channels\n%!";
     declare_privchannels privchannelList;
     check_atoms ()
   | DeclWeakNames nameList ->
-    verboseOutput "Declaring weak names\n%!";
+    if !verbose_output then Format.printf "Declaring weak names\n%!";
     guess := true;
     declare_weaknames nameList;
     check_atoms ();
   | DeclPrivate nameList ->
-    verboseOutput "Declaring private names\n%!";
+    if !verbose_output then Format.printf "Declaring private names\n%!";
     declare_names nameList;
     check_atoms ()
   | DeclVar varList ->
-    verboseOutput "Declaring variables\n%!";
+    if !verbose_output then Format.printf "Declaring variables\n%!";
     declare_vars varList;
     check_atoms ()
 
   | DeclRewrite(t1, t2) ->
-    verboseOutput "Declaring rewrite rule\n%!";
+    if !verbose_output then Format.printf "Declaring rewrite rule\n%!";
     declare_rewrite t1 t2
   | DeclEvRewrite(t1, t2) ->
-    verboseOutput "Declaring rewrite rule\n%!";
+    if !verbose_output then Format.printf "Declaring rewrite rule\n%!";
     declare_evrewrite t1 t2
   | _ -> failwith "not preamble"
 
@@ -311,7 +311,7 @@ module AC : REWRITING = struct
 		| Rewriting.Not_unifiable -> [] 
 		| Rewriting.No_easy_unifier ->
 		  begin
-		    (*debugOutput "Maude is called: %s =?= %s \n" (show_term s)(show_term t);*)
+		    (* if !debug_output then Format.printf "Maude is called: %s =?= %s \n" (show_term s)(show_term t);*)
 		    Maude.unifiers s t []
 		  end
 	end
@@ -328,9 +328,9 @@ module AC : REWRITING = struct
     | Rewriting.Not_matchable -> []
     | Rewriting.No_easy_match ->
       begin
-	  (*debugOutput "Maude is called: %s <=? %s \n" (show_term s)(show_term t);*)
+	  (* if !debug_output then Format.printf "Maude is called: %s <=? %s \n" (show_term s)(show_term t);*)
 	let m= Maude.acmatchers s t in
-        (*debugOutput "Matchers: %s\n" (show_subst_list  m ) ;*)
+        (* if !debug_output then Format.printf "Matchers: %s\n" (show_subst_list  m ) ;*)
 	m
       end 
 

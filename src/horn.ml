@@ -37,7 +37,7 @@ module R = struct
   let csu u v =
     let sols = if may_be_unifiable u v then unifiers u v [] else [] in
     let n = List.length sols in
-      if n>0 then debugOutput "Found %d solution(s)\n" n ;
+      if n>0 then if !debug_output then Format.printf "Found %d solution(s)\n" n ;
       sols
 
   (** If it returns true, terms must be alpha equivalent.
@@ -347,7 +347,7 @@ let csu_atom opti a1 a2 =
 			:: (addvar w world x1 x2 rx x11 x12 x q)
 		| [] -> [] in
 	if opti
-	then begin (*debugOutput "Unification : %s = %s \n" (show_term (term_from_atom a1)) (show_term (term_from_atom a2));*)
+	then begin (* if !debug_output then Format.printf "Unification : %s = %s \n" (show_term (term_from_atom a1)) (show_term (term_from_atom a2));*)
 			match (a1,a2) with 
 			| (Predicate("knows",[world;Var(rx);t]),Predicate("knows",[Var(w);Fun("plus",[Var(x1);Var(x2)]);Fun("plus",[Var(x11);Var(x12)])])) -> 
 				begin List.filter (fun x -> x <> []) (
@@ -361,7 +361,7 @@ let csu_atom opti a1 a2 =
 				| ([],l) -> []
 				| ([x],a::l) -> 
 					if List.mem x ( vars_of_term_list (a::l)) 
-					then begin debugOutput "warning \n"; csu_atom  a1 a2 end
+					then begin  if !debug_output then Format.printf "warning \n"; csu_atom  a1 a2 end
 					else addvar w world x1 x2 rx x11 x12 x (exponential l [([a],[])])
 				| _ ->  csu_atom a1 a2 ) end 
 			| _ -> assert(false) end
@@ -610,7 +610,7 @@ module Base = struct
       S.iter
         (fun y ->
            if same_statement x y then begin
-             debugOutput "Statement #%d already in kb: #%d.\n"
+              if !debug_output then Format.printf "Statement #%d already in kb: #%d.\n"
                (get_id x) (get_id y) ;
              raise Found
            end)
@@ -621,7 +621,7 @@ module Base = struct
   let add ?(needs_check=true) x _ kb =
     assert (needs_check || not (mem_equiv x kb)) ;
     if not (needs_check && mem_equiv x kb) then begin
-      debugOutput "Adding clause #%d@@%d.\n" x.id x.age ;
+       if !debug_output then Format.printf "Adding clause #%d@@%d.\n" x.id x.age ;
       add x kb
     end
 
@@ -702,13 +702,13 @@ let rule_shift st =
   | Predicate("knows", [w; r ; Fun("plus", [ l ; t ])]) ->
 	begin match (variable_first (Fun("plus", [ l ; t ]))) with
 		| Fun("plus", [ Var(x); t ]) -> begin let stt = {st with head = Predicate("knows", [w; Fun("plus",[get_recipe (Var(x)) (st.body); r]); t])} in 
-			debugOutput "shift + on the statement: %s \n" (show_statement stt); stt;
+			 if !debug_output then Format.printf "shift + on the statement: %s \n" (show_statement stt); stt;
 			 end
 		| _ -> st
 	end
   | Predicate("knows", [w; r ; Var(x)]) ->
 	begin let stt = {st with head = Predicate("knows", [w; Fun("plus",[get_recipe (Var(x)) (st.body); r]); Fun("zero",[])])} in 
-			debugOutput "shift 0 on the statement: %s \n" (show_statement stt); stt;
+			 if !debug_output then Format.printf "shift 0 on the statement: %s \n" (show_statement stt); stt;
 			 end
   | _ -> st
 
@@ -743,7 +743,7 @@ let simplify_statement st =
       st.body
   in
     List.iter
-      (fun a -> debugOutput "Removed %s\n" (show_atom a))
+      (fun a ->  if !debug_output then Format.printf "Removed %s\n" (show_atom a))
       useless ;
     if useless = [] then st else { st with body = body }
 
@@ -752,7 +752,7 @@ let canonical_form statement =
     let f = if Theory.xor then 
         iterate rule_shift (simplify_statement statement) 
       else iterate rule_remove (iterate rule_rename statement) in
-      debugOutput "Canonized: %s\n" (show_statement f) ;
+       if !debug_output then Format.printf "Canonized: %s\n" (show_statement f) ;
       f
   else
     simplify_statement statement
@@ -793,9 +793,9 @@ let inst_w_t my_head head_kb exc =
         let t1 = Fun("!tuple!", [myw; myt]) in
         let t2 = Fun("!tuple!", [wkb; tkb]) in
           begin try
-            (* debugOutput "Matching %s against %s\n%!" (show_term t1) (show_term t2); *)
+            (*  if !debug_output then Format.printf "Matching %s against %s\n%!" (show_term t1) (show_term t2); *)
             let sigma = Rewriting.mgm t2 t1 in
-              (* debugOutput "Result %s\n%!" (show_subst sigma); *)
+              (*  if !debug_output then Format.printf "Result %s\n%!" (show_subst sigma); *)
               sigma
           with
             | Rewriting.Not_matchable -> raise exc
@@ -807,9 +807,9 @@ let inst_w_t_ac my_head head_kb =
     | (Predicate(_, [myw; _; myt]), Predicate(_, [wkb; _; tkb])) ->
 	let t1 = Fun("!tuple!", [myw; myt]) in
 	let t2 = Fun("!tuple!", [wkb; tkb]) in
-        (* debugOutput "Matching %s against %s\n%!" (show_term t1) (show_term t2); *)
+        (*  if !debug_output then Format.printf "Matching %s against %s\n%!" (show_term t1) (show_term t2); *)
         R.matchers t2 t1 []
-        (* debugOutput "Result %s\n%!" (show_subst sigma); *)
+        (*  if !debug_output then Format.printf "Result %s\n%!" (show_subst sigma); *)
     | _ -> invalid_arg("inst_w_t_ac")
 
 let rec factors = function
@@ -859,9 +859,9 @@ let consequence st kb rules =
                  * instantiated clause [x] is normal. *)
                 first
                   (fun x ->
-                     (* debugOutput "Checking %s\n%!" *)
+                     (*  if !debug_output then Format.printf "Checking %s\n%!" *)
                      (*   (show_statement (head, body)); *)
-                     (* debugOutput "Against %s\n%!" *)
+                     (*  if !debug_output then Format.printf "Against %s\n%!" *)
                      (*   (show_statement x); *)
                      let sigma = inst_w_t head (get_head x) Not_a_consequence in
                      let subresults =
@@ -908,7 +908,7 @@ let is_reflexive st =
     | Predicate("identical", [_; r; rp])
     | Predicate("ridentical", [_; r; rp]) ->
         if r = rp then begin
-          debugOutput "Clause #%d is reflexive, not useful.\n" st.id ;
+           if !debug_output then Format.printf "Clause #%d is reflexive, not useful.\n" st.id ;
           false
         end else true
     | _ -> invalid_arg "is_reflexive"
@@ -937,7 +937,7 @@ let normalize_new_statement rules f =
     if drop_non_normal_skel then
       let t' = R.normalize t rules in
         if not (R.equals t t' []) then begin
-          debugOutput "Non-normal term in clause #%d.\n" (get_id f) ;
+           if !debug_output then Format.printf "Non-normal term in clause #%d.\n" (get_id f) ;
           None
         end else
           (* Return t' rather than t because it is more canonical. *)
@@ -1028,7 +1028,7 @@ let update (kb : Base.t) rules (f : statement) : unit =
       let newclause = normalize_identical { fc with head = newhead } in
         (* No need to freshen [newclause], since it has the same variables as
          * [fc] which is fresh. *)
-        debugOutput
+         if !debug_output then Format.printf
           "Useless: %s\n\
            Original form: %s\n\
            Replaced by: %s\n\n%!"
@@ -1087,7 +1087,7 @@ let ext_update (kb : Base.t) rules (f : statement) : unit =
       let newclause = normalize_identical { fc with head = newhead } in
         (* No need to freshen [newclause], since it has the same variables as
          * [fc] which is fresh. *)
-        debugOutput
+         if !debug_output then Format.printf
           "Useless: %s\n\
            Original form: %s\n\
            Replaced by: %s\n\n%!"
@@ -1126,7 +1126,7 @@ let ext_update (kb : Base.t) rules (f : statement) : unit =
       let newclause = normalize_identical { fc with head = newhead } in
         (* No need to freshen [newclause], since it has the same variables as
          * [fc] which is fresh. *)
-        debugOutput
+         if !debug_output then Format.printf
           "Useless: %s\n\
            Original form: %s\n\
            Replaced by: %s\n\n%!"
@@ -1165,7 +1165,7 @@ let initial_kb (seed : statement list) rules : Base.t =
       in
         List.iter
           (fun f ->
-             debugOutput "Initializing kb with clause %s.\n" (show_statement f) ;
+              if !debug_output then Format.printf "Initializing kb with clause %s.\n" (show_statement f) ;
              Base.add f rules kb)
           xor_variants ;
         seed
@@ -1204,12 +1204,12 @@ let generate_dynamic_marking sigmas ~t ~rx ~x ~ry ~y =
 
     match extract_rigid [] [t] with
       | `None variables ->
-          debugOutput
+           if !debug_output then Format.printf
             "rigid subterm: none, size %d\n"
             (List.length variables) ;
           sigmas
       | `Some t ->
-          debugOutput "rigid subterm: %s\n" (show_term t) ;
+           if !debug_output then Format.printf "rigid subterm: %s\n" (show_term t) ;
           let rec occurs t = function
             | Var _ :: l -> occurs t l
             | Fun ("plus",args) :: l ->
@@ -1286,7 +1286,7 @@ let resolution master slave =
     let sigmas = propagate_marking sigmas in
     let length = List.length sigmas in
     if !debug_output && length > 0 then begin
-      debugOutput "Resolution?\n FROM: %s\n AND : %s\n\n"
+       if !debug_output then Format.printf "Resolution?\n FROM: %s\n AND : %s\n\n"
         (show_statement master)
         (show_statement slave) ;
       Format.printf "csu of size %d:\n" length ;
@@ -1328,7 +1328,7 @@ let resolution master slave =
                  ~parents:[master;slave]
                  (head,body)
            in
-             debugOutput "RESO: %s\n\n"
+              if !debug_output then Format.printf "RESO: %s\n\n"
                (show_statement result);
              result)
         sigmas
@@ -1362,7 +1362,7 @@ let ext_resolution master slave =
     let sigmas = propagate_marking sigmas in
     let length = List.length sigmas in
     if !debug_output && length > 0 then begin
-      debugOutput "Resolution?\n FROM: %s\n AND : %s\n\n"
+       if !debug_output then Format.printf "Resolution?\n FROM: %s\n AND : %s\n\n"
         (show_statement master)
         (show_statement slave) ;
       Format.printf "csu of size %d:\n" length ;
@@ -1404,7 +1404,7 @@ let ext_resolution master slave =
                  ~parents:[master;slave]
                  (head,body)
            in
-             debugOutput "RESO: %s\n\n"
+              if !debug_output then Format.printf "RESO: %s\n\n"
                (show_statement result);
              result)
         sigmas
@@ -1432,7 +1432,7 @@ let equation fa fb =
         | (Predicate("knows", [ul; r; t]),
            Predicate("knows", [upl; rp; tp])) ->
 
-            debugOutput "Equation:\n %s\n %s\n%!"
+             if !debug_output then Format.printf "Equation:\n %s\n %s\n%!"
               (show_statement fa) (show_statement fb) ;
             let t1 = Fun("!tuple!", [t; ul]) in
             let t2 = Fun("!tuple!", [tp; upl]) in
@@ -1474,7 +1474,7 @@ let equation fa fb =
                 let sigmas' = List.filter nontrivial sigmas in
                 let l' = List.length sigmas' in
                   if l' < List.length sigmas then
-                    debugOutput "Non-trivial solutions: %d\n" l' ;
+                     if !debug_output then Format.printf "Non-trivial solutions: %d\n" l' ;
                   sigmas'
               else
                 sigmas
@@ -1492,7 +1492,7 @@ let equation fa fb =
                 sigmas
             in
               if sigmas <> [] then
-                debugOutput "Generated clauses %s.\n"
+                 if !debug_output then Format.printf "Generated clauses %s.\n"
                   (String.concat ","
                      (List.map (fun st -> "#"^string_of_int st.id) clauses)) ;
               clauses
@@ -1521,7 +1521,7 @@ let ext_equation fa fb =
             when (k1 = "knows" || k1 = "knows+") 
             && (k2 = "knows" || k2 = "knows+")
           ->
-            debugOutput "Equation:\n %s\n %s\n%!"
+             if !debug_output then Format.printf "Equation:\n %s\n %s\n%!"
               (show_statement fa) (show_statement fb) ;
             let t1 = Fun("!tuple!", [t; ul]) in
             let t2 = Fun("!tuple!", [tp; upl]) in
@@ -1563,7 +1563,7 @@ let ext_equation fa fb =
                 let sigmas' = List.filter nontrivial sigmas in
                 let l' = List.length sigmas' in
                   if l' < List.length sigmas then
-                    debugOutput "Non-trivial solutions: %d\n" l' ;
+                     if !debug_output then Format.printf "Non-trivial solutions: %d\n" l' ;
                   sigmas'
               else
                 sigmas
@@ -1581,7 +1581,7 @@ let ext_equation fa fb =
                 sigmas
             in
               if sigmas <> [] then
-                debugOutput "Generated clauses %s.\n"
+                 if !debug_output then Format.printf "Generated clauses %s.\n"
                   (String.concat ","
                      (List.map (fun st -> "#"^string_of_int st.id) clauses)) ;
               clauses
@@ -1620,7 +1620,7 @@ let rec ridentical fa fb =
     | Predicate("identical", [u; r; rp]),
       Predicate("reach", [up]) ->
           assert (is_solved fa && is_solved fb) ;
-          debugOutput
+           if !debug_output then Format.printf
             "ridentical trying to combine %s with %s\n%!"
             (show_statement fa) (show_statement fb);
           if(world_length u <> world_length up || r = rp) then [] else begin
@@ -1634,7 +1634,7 @@ let rec ridentical fa fb =
                    List.map (fun x -> apply_subst_atom x sigma) newbody
                  in
                  let result = new_clause ~label:"ri" ~parents:[fa;fb] result in
-                   debugOutput "\n\nRID FROM: %s\nRID AND : %s\nRID GOT: %s\n\n%!"
+                    if !debug_output then Format.printf "\n\nRID FROM: %s\nRID AND : %s\nRID GOT: %s\n\n%!"
                      (show_statement fa)
                      (show_statement fb)
                      (show_statement result);
@@ -1648,13 +1648,13 @@ let eridentical fa fb =
   match fa.head with
     | Predicate("reach", [up]) -> 
         assert (is_solved fa && (List.for_all (fun x -> is_solved x) fb)) ;
-      debugOutput
+       if !debug_output then Format.printf
           "eridentical: trying to combine\n%s\nwith some others:\n%s\n"
         (show_statement fa)
 	(show_statement_list fb);
 
       let sigmas = unifiers_n (fa.head::(List.map (fun x -> x.head) fb)) in
-      debugOutput "Show sigmas\n%s\n" (show_subst_list sigmas); flush_all ();
+       if !debug_output then Format.printf "Show sigmas\n%s\n" (show_subst_list sigmas); flush_all ();
       List.map
         (fun sigma ->
           let newhead = Predicate("eridentical", 
@@ -1671,8 +1671,8 @@ let eridentical fa fb =
                  List.map (fun x -> apply_subst_atom_until_fixpoint x sigma) newbody
                in
                let result = new_clause ~label:"eri" ~parents:(fa::fb) result in
-                 debugOutput "\nCurrent Sigma : %s\n" (show_subst sigma);
-                 debugOutput "\n\nRID FROM: %s\nRID AND : %s\nRID GOT: %s\n\n%!" 
+                  if !debug_output then Format.printf "\nCurrent Sigma : %s\n" (show_subst sigma);
+                  if !debug_output then Format.printf "\n\nRID FROM: %s\nRID AND : %s\nRID GOT: %s\n\n%!" 
                    (show_statement fa) (String.concat "\n" (List.map (fun x
                                                                       -> Printf.sprintf "%s" (show_statement x)) fb))
                    (show_statement result);
@@ -1847,10 +1847,10 @@ let rec recipize_h (tl : term) kb =
     | _ -> Printf.printf "-%s-\n%!" (show_term tl); invalid_arg("recipize_h")
 
 let recipize tl kb =
-  debugOutput "Recipizing %s\n" (show_term tl);
+   if !debug_output then Format.printf "Recipizing %s\n" (show_term tl);
   let result = recipize_h (revworld tl) kb in
   (
-  debugOutput "Result %s\n" (show_term (revworld result));
+   if !debug_output then Format.printf "Result %s\n" (show_term (revworld result));
     result
   )
 
@@ -1908,7 +1908,7 @@ let checks_reach kb =
          | Predicate("reach", [w]) ->
 		let new_check = alpha_rename_namified_term(Fun ("check_run", [revworld (recipize (namify w) kb)])) in 
 		begin             
-			debugOutput "TESTER: %s \n" (show_term new_check); 
+			 if !debug_output then Format.printf "TESTER: %s \n" (show_term new_check); 
 			new_check  :: checks end 
          | _ -> checks)
     [] solved
@@ -1932,7 +1932,7 @@ let checks_ridentical kb =
              let resulting_test = alpha_rename_namified_term(Fun("check_identity", [new_w;
                                                          apply_subst r omega;
                                                          apply_subst rp omega])) in
-             begin debugOutput "TESTER: %s\n" (show_term resulting_test) ; 
+             begin  if !debug_output then Format.printf "TESTER: %s\n" (show_term resulting_test) ; 
              resulting_test :: checks end 
          | _ -> checks)
     kb []
@@ -1967,7 +1967,7 @@ let checks_guess_reachability (is_guess : bool) kb trace_size =
          match (get_head x) with
            | Predicate("eridentical", w::rl) ->
                begin
-                 debugOutput "TESTER: %s\n" (show_statement x);
+                  if !debug_output then Format.printf "TESTER: %s\n" (show_statement x);
                  let sigma = namify_subst w in
                  let new_w = revworld (recipize (apply_subst w sigma) kb) in
                  let omega =

@@ -888,7 +888,7 @@ let rec apply_subst_tr pr sigma = match pr with
 
 let rec execute_h_dumb process instructions =
   (
-    (* debugOutput *)
+    (*  if !debug_output then Format.printf *)
     (*   "Executing: %s\nFrame: %s\nInstructions: %s\n\n%!" *)
     (*   (show_trace process) *)
     (*   (show_term_list frame) *)
@@ -998,7 +998,7 @@ let is_reach_test test = match test with
 let check_reach process test_reach rules = match test_reach with
   | Fun("check_run", [w]) ->
       (
-	(* debugOutput *)
+	(*  if !debug_output then Format.printf *)
 	(*   "CHECK FOR: %s\nREACH: %s\n\n%!" *)
 	(*   (show_trace process) *)
 	(*   (show_term w); *)
@@ -1153,7 +1153,7 @@ let rec check_guess_reachability_tests trace test_gr rules =
         (
           if (check_guess_reachability trace (w,rl) rules) then 
             (
-              debugOutput "Good guess found. ===\n";
+               if !debug_output then Format.printf "Good guess found. ===\n";
               Some w
             )
           else

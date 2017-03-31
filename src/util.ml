@@ -27,12 +27,6 @@ let verboseOutput a =
   else
     Format.ifprintf Format.std_formatter a
 
-let debugOutput a =
-  if !debug_output then
-    Format.printf a
-  else
-    Format.ifprintf Format.std_formatter a
-
 let normalOutput a =
   if !verbose_output || !debug_output then
     Format.ifprintf Format.std_formatter a
