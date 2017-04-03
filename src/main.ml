@@ -245,6 +245,8 @@ let query_correspondence ?(expected=true) p =
     List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) ftraces;
 
     let rtraces = List.concat (List.map (fun x -> trace_begend_enhance_not_injective x) ftraces) in
+    if !verbose_output then Format.printf "Traces end simplified:\n===\n"; 
+    List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) rtraces;
     let traces_to_check = traces_auto_guess_enhance rtraces in
     if !verbose_output then Format.printf "Traces to check:\n===\n"; 
     List.iteri (fun i t -> if !verbose_output then Format.printf "%d) %s\n\n" (i + 1) (show_trace t)) traces_to_check;

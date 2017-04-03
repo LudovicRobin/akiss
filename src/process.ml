@@ -137,23 +137,16 @@ let rec is_trace_contains_corres_end = function
 
 let rec trace_guess_enhance_h (flag : bool) (wname : action) (trace : trace) : trace list = 
   match trace with
-    | Trace(Input(_) as a, tr) ->
-        if flag then 
+    | Trace(Input(_) as a, tr) when flag ->
             (Trace(wname,Trace(a,tr)))::
             (List.rev_map 
-               (fun x ->
-                  (trace_append x (Trace(a,NullTrace))))
+               (fun x -> (Trace(a,x)))
                (trace_guess_enhance_h false wname tr))
-        else 
-          (Trace(a,tr))::(List.rev_map 
-                          (fun x ->
-                             (trace_append x (Trace(a,NullTrace))))
-                          (trace_guess_enhance_h false wname tr))
     | Trace(Output(_,_) as a,tr) ->
-        List.rev_map (fun x -> trace_append x (Trace(a,NullTrace)))
+        List.rev_map (fun x -> Trace(a,x))
           (trace_guess_enhance_h true wname tr)
     | Trace(a, tr) -> 
-        List.rev_map (fun x -> trace_append x (Trace(a,NullTrace)))
+        List.rev_map (fun x -> Trace(a,x))
           (trace_guess_enhance_h flag wname tr)
     | NullTrace -> [NullTrace]
 
@@ -162,17 +155,20 @@ let trace_guess_enhance t =
       (fun tl wn -> 
          let g = Guess(Fun(wn,[])) in 
            (List.fold_left 
-              (fun rtl t -> (trace_guess_enhance_h false g t) @ rtl 
+              (fun rtl t -> 
+                 (trace_guess_enhance_h false g t) @ rtl 
            ) [] tl)
       ) [t] Theory.weaknames
 
 let traces_auto_guess_enhance ttraces =
   if (List.exists (fun t -> not (is_trace_auto_guess t)) ttraces)
     then ( ttraces ) 
-    else ( (List.fold_left 
-        (fun tl t -> (trace_guess_enhance t)@tl) 
-                      [] ttraces ))
+    else ( List.concat (List.map
+                          (fun t -> 
+                             (trace_guess_enhance t)) 
+                          ttraces ))
 
+           (*
 let rec trace_beg_vars t =
   match t with 
     | Trace(Begin(x), tr) -> x::(trace_beg_vars tr)
@@ -207,6 +203,20 @@ let trace_begend_enhance_not_injective t =
                           t_acc) 
                      tt bv
        ) bes)
+            *)
+let trace_begend_tests beginterms endterm trace =
+  let tests = List.fold_left (fun a bt -> Trace(NTest(bt,endterm),a)) (Trace(Event,NullTrace)) beginterms in
+    trace_append tests trace
+
+let rec trace_begend_h tr ab at = 
+    match tr with 
+      | NullTrace -> []
+      | Trace(Begin(t),tr') -> trace_begend_h tr' (t::ab) at
+      | Trace(End(t),tr')-> (trace_begend_tests ab t at)::(trace_begend_h tr' ab at)
+      | Trace(a,tr')-> (trace_begend_h tr' ab (trace_append (Trace(a,NullTrace)) at))
+
+let trace_begend_enhance_not_injective tr = 
+    trace_begend_h tr [] NullTrace 
 
 let rec trace_contains_guess = function
     | Trace(Guess(term),_) -> true
