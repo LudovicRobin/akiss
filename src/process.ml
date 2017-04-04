@@ -44,7 +44,7 @@ type action_classification =
   | PrivateOutput of id * term
 
 let classify_action = function
-  | [] -> assert false
+  | [] (* -> assert false *)
   | Test (_, _) :: _ -> PublicAction
   | NTest (_, _) :: _ -> PublicAction
   | Input (c, x) :: _ ->
@@ -424,6 +424,7 @@ let rec symb_of_temp process processes =
   | TempProcessRef (name) ->
      List.assoc name processes
 
+
        
 let rec simplify = function
   | SymbNul -> SymbNul
@@ -444,6 +445,7 @@ let rec simplify = function
      | p, SymbNul -> p
      | p1, p2 -> SymbAlt (p1, p2))
   | SymbPhase _ as p -> p
+
 
 let rec optimize_tests p =
   (unlinearize SymbNul (compress_tests [] [] (linearize p)))
@@ -478,33 +480,44 @@ and compress_tests res accu = function
      let res = if accu = [] then res else SymbAct(nid (), accu) :: res in
      compress_tests (p :: res) [] xs
 
+
+let rm_triv_test al =
+  let is_non_triv a =
+    match a with
+    | Test(t1, t2) -> if t1<>t2 then true else false
+    | _ -> true
+  in
+  
+  List.filter is_non_triv al
+    
+       
 let rec delta = function
   | SymbNul -> []
-  | SymbAct(id,a) -> [ (a, SymbNul, (id, [SymbNul])) ]
+  | SymbAct(id,a) -> [ (rm_triv_test a, SymbNul, (id, [SymbNul])) ]
   | SymbSeq (p1, p2) ->
-     List.fold_left (fun accu (a, p, (i,_)) ->
-       (a, (simplify (SymbSeq (p, p2))), (i,actions_id_of p)) :: accu
-     ) [] (delta p1)
+    List.fold_left
+      (fun accu (a, p, (i,_)) -> (a, (simplify (SymbSeq (p, p2))), (i,actions_id_of p)) :: accu)
+      [] (delta p1)
   | SymbAlt (p1, p2) -> delta p1 @ delta p2
   | SymbPar (p1, p2) ->
-     let s1 =
-       List.fold_left (fun accu (a, p, (i,r)) ->
-         (a, simplify (SymbPar (p, p2)), (i,r)) :: accu
-       ) [] (delta p1)
-     in
-     let s2 =
-       List.fold_left (fun accu (a, p, (i,r)) ->
-         (a, simplify (SymbPar (p1, p)), (i,r)) :: accu
-       ) s1 (delta p2)
-     in
+    let s1 =
+      List.fold_left (fun accu (a, p, (i,r)) ->
+        (a, simplify (SymbPar (p, p2)), (i,r)) :: accu
+      ) [] (delta p1)
+    in
+    let s2 =
+      List.fold_left (fun accu (a, p, (i,r)) ->
+        (a, simplify (SymbPar (p1, p)), (i,r)) :: accu
+      ) s1 (delta p2)
+    in
      s2
   | SymbPhase (p1, p2) ->
-      let s = List.rev_append
-        (List.map (fun (a,p,(i,_)) -> 
-                     a, SymbPhase (p,p2), (i,(actions_id_of p2))) (delta p1))
-        (delta p2)
-      in 
-      s
+    let s = List.rev_append
+      (List.map (fun (a,p,(i,_)) -> 
+        a, SymbPhase (p,p2), (i,(actions_id_of p2))) (delta p1))
+      (delta p2)
+    in 
+    s
 
 
 
@@ -526,39 +539,39 @@ let is_succ_independant d ds =
 let rec is_rem_end sp = 
     List.exists (fun x -> match x with SymbAct(_,End(_)::_) -> true | _ -> false) (actions_id_of sp)
 
-
+      
 let rec traces_reachability p =
   (*Printf.printf "===\n%s\n===\n" (show_symb p);*)
   let d = delta p in
   
   let event_first = (List.filter (fun (a,_,_) -> match a with Event::_ -> true | _ -> false) d) in
   if event_first <> [] then ( 
-      let r = List.fold_left (fun accu (a,_,_) ->  
-                               TraceSet.add (trace_prepend a NullTrace) accu)
-        TraceSet.empty event_first 
-      in 
-        if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
-    ) 
+    let r = List.fold_left (fun accu (a,_,_) ->  
+      TraceSet.add (trace_prepend a NullTrace) accu)
+      TraceSet.empty event_first 
+    in 
+    if TraceSet.is_empty r then TraceSet.singleton NullTrace else r
+  ) 
   else (
-  (*let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
-   true | _ -> false) d in*)
-  let dout = List.filter 
-               (fun d' -> match d' with | (a,b,(id,r)) -> (*if isPhase then (
-                 match b with 
-                   | SymbPhase _ -> (
-                        match a with 
-                          | Output _::[] -> ((classify_action a) = PublicAction)
-                          | End _::[] -> true 
-                          |  _ -> false
-                     )
-                   | _ -> false
-               ) else*) (
-                 match a with 
-                          | Output _::[] -> (is_succ_independant d' d) && (classify_action a) = PublicAction
-                          | End _::[] -> (is_succ_independant d' d) &&  true
-                          |  _ -> false
-               )
-               ) d in
+    (*let isPhase = List.exists (fun (_,b,_) -> match b with SymbPhase _ ->
+      true | _ -> false) d in*)
+    let dout = List.filter 
+      (fun d' -> match d' with | (a,b,(id,r)) -> (*if isPhase then (
+						   match b with 
+						   | SymbPhase _ -> (
+						   match a with 
+						   | Output _::[] -> ((classify_action a) = PublicAction)
+						   | End _::[] -> true 
+						   |  _ -> false
+						   )
+						   | _ -> false
+						   ) else*) (
+        match a with 
+        | Output _::[] -> (is_succ_independant d' d) && (classify_action a) = PublicAction
+        | End _::[] -> (is_succ_independant d' d) &&  true
+        |  _ -> false
+       )
+      ) d in
     (*Printf.printf "Prioritize\n";
     List.iter (fun (a,_,_) -> Printf.printf "Prio Candidate : %s\n" (show_action(List.hd a))) dout;*)
     if dout <> [] && !Theory.reachability_only then (
