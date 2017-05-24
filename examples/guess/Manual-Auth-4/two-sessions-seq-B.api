@@ -5,10 +5,10 @@
 Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
 Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
 start session 2 at any moment.
-Result: An attack has been found ?? 
+Result: no attack has been found
 */
 
-symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+symbols h/3, ok/0, ready/0, start/0;
 
 private k1, k2;
 weak r1, r2;

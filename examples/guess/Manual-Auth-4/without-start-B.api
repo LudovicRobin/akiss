@@ -7,7 +7,7 @@ Result: An attack has been found.  Indeed, message start is important to ensure 
 the commitment (msg 1) before A sends the values r and k.
 */
 
-symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+symbols h/3, ok/0, ready/0;
 
 private k;
 weak r;

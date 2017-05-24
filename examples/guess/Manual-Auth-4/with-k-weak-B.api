@@ -6,7 +6,7 @@ Scenario: 1 session of each role.
 Result: An attack has been found. Indeed, in case both k and r are weak they are guessable once h(d,h,r) is outputted by A.
 */
 
-symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+symbols h/3, ok/0, ready/0, start/0;
 
 weak k,r;
 channels CA, CB, CH;

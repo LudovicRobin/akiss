@@ -6,7 +6,7 @@ Scenario: 1 session of each role.
 Result: No attack has been found.
 */
 
-symbols h/3, ok/0, pair/2, fst/1, snd/1, ready/0, start/0, d/0;
+symbols h/3, ok/0, ready/0, start/0;
 
 private k;
 weak r;
