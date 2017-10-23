@@ -30,7 +30,7 @@ Alice = in(CA,XA1).
         (out(OAH,ready) ||
         out(OAH,r).
         in(OHA,XA3).[XA3=start].
-        out(CA,hash(IA,XA1,kA,XA2)).
+        out(CA,hash(IA,XA1,kA,r)).
         in(CA,XA4).
         begin(XA1).
         out(CA,kA).
