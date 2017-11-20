@@ -54,7 +54,7 @@ Bob   = in(CB,XB1).
         ));
 
 H     = (out(OHA,r) || (out(OHB,r)  ||
-        (in(OAH,XH1).[XH1=ready] ||
+        out(CH,r).(in(OAH,XH1).[XH1=ready] ||
         in(OBH,XH2).[XH2=ready]) ::
         (out(OHA,start) ||
         (in(OAH,XH3).[XH3=accept] || in(OBH,XH4).[XH4=accept]) ::

@@ -28,7 +28,7 @@ var X,Y,X1,Y1,XA1,XA2,XA3,XA4,XA5,XA6,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 Alice = in(CA,XA1).
         in(OHA,XA2).
         (out(OAH,ready) ||
-        out(CA,hash(IA,XA1,kA,XA2)).
+        out(CA,hash(IA,XA1,kA,XA2)). 
         in(CA,XA4).
         begin(XA1).
         out(CA,kA).
@@ -41,8 +41,8 @@ Alice = in(CA,XA1).
 Bob   = in(CB,XB1).
         in(OHB,XB2).
         (out(OBH,ready) ||
-        out(CB,hash(IB,XB1,kB,XB2)).
-        in(CB,XB3).
+        out(CB,hash(IB,XB1,kB,XB2)). 
+        in(CB,XB3). 
         in(CB,XB4).
         [XB3=hash(IA,XB1,XB4,XB2)].
         out(CB,kB).  
