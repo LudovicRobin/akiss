@@ -34,9 +34,9 @@ Alice = in(CA,XA1).
         in(CA,XA4).
         out(CA,kA).
         in(CA,XA5).
-        [XA4=hash(IB,XA1,XA5,r)].begin(XA1).
+        [XA4=hash(IB,XA1,XA5,r)].
         (out(OAH,accept) ||
-        in(OHA,XA6).[XA6=accept]
+        in(OHA,XA6).[XA6=accept].end(XA1)
         )));
 
 Bob   = in(CB,XB1).
@@ -46,11 +46,11 @@ Bob   = in(CB,XB1).
         in(CB,XB3).
         in(CB,XB4).
         [XB3=hash(IA,XB1,XB4,XB2)].
+        begin(XB1).
         out(CB,kB).  
         (out(OBH,accept) ||
         out(CB,kB).
         in(OHB,XB5).[XB5=accept]
-        .end(XB1)
         ));
 
 H     = (in(OAH,XH0).(out(OHB,r)  ||

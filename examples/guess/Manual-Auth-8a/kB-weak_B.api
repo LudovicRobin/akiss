@@ -4,8 +4,8 @@
 
 symbols IA/0,IB/0,ready/0, start/0, accept/0, hash/4;
 
-weak r;
-private kA, kB;
+weak r, kB;
+private kA;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XA4,XA5,XA6,XB1,XB2,XB3,XB4,XB5,XH0,XH1,XH2,XH3,XH4;

@@ -4,8 +4,8 @@
 
 symbols IA/0,IB/0,ready/0, start/0, accept/0, hash/4;
 
-weak r;
-private kA, kB;
+weak r, kB;
+private kA;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XA4,XA5,XA6,XB1,XB2,XB3,XB4,XB5,XH0,XH1,XH2,XH3,XH4;
@@ -34,9 +34,9 @@ Alice = in(CA,XA1).
         in(CA,XA4).
         out(CA,kA).
         in(CA,XA5).
-        [XA4=hash(IB,XA1,XA5,r)].begin(XA1).
+        [XA4=hash(IB,XA1,XA5,r)].
         (out(OAH,accept) ||
-        in(OHA,XA6).[XA6=accept]
+        in(OHA,XA6).[XA6=accept].end(XA1)
         )));
 
 Bob   = in(CB,XB1).
@@ -46,11 +46,11 @@ Bob   = in(CB,XB1).
         in(CB,XB3).
         in(CB,XB4).
         [XB3=hash(IA,XB1,XB4,XB2)].
+        begin(XB1).
         out(CB,kB).  
         (out(OBH,accept) ||
         out(CB,kB).
         in(OHB,XB5).[XB5=accept]
-        .end(XB1)
         ));
 
 H     = (in(OAH,XH0).(out(OHB,r)  ||
