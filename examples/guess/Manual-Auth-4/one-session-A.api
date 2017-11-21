@@ -14,16 +14,17 @@ channels CA, CB, CH;
 privchannels OAH1, OAH2, OHA1, OHA2, OBH, OHB;
 var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4;
 
-
-/* 1. A->B  : d, h(d,k,r) */
-/* 2. A=>H  : ready */
-/* 3. B=>H  : ready */
-/* 4. H=>A  : start */
-/* 5. A=>H  : r */
-/* 6. H=>B  : r */
-/* 7. A->B  : k */
-/* 8. B=>H  : ok */
-/* 9. H=>A  : ok */
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
+/* 2.  A->B : h(d,k,r) */
+/* 3a. A=>H : ready */
+/* 3b. B=>H : ready */
+/* 4.  H=>A : start */
+/* 5a. A=>H : r */
+/* 5b. H=>B : r */
+/* 7.  A->B : k */
+/* 8a. B=>H : ok */
+/* 8b. H=>A : ok */
 
 
 Alice = in(CA,XA1).out(CA,h(XA1,k,r)).(out(OAH1,ready)

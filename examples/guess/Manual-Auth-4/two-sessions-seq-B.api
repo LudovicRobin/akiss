@@ -1,7 +1,6 @@
 /*
    Manual authentication 4
 
-
 Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
 Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
 start session 2 at any moment.
@@ -16,16 +15,17 @@ channels CA1,CA2, CB1, CB2, CH1, CH2;
 privchannels OAH1, OAH2, OHA1,OHA2, OBH, OHB;
 var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4,YA1, YA2, YA3, YB1, YB2, YB3, YB4, YH1, YH2, YH3, YH4;
 
-
-/* 1. A->B  : d, h(d,k,r) */
-/* 2. A=>H  : ready */
-/* 3. B=>H  : ready */
-/* 4. H=>A  : start */
-/* 5. A=>H  : r */
-/* 6. H=>B  : r */
-/* 7. A->B  : k */
-/* 8. B=>H  : ok */
-/* 9. H=>A  : ok */
+/* 1a.  ->A : d_A */
+/* 1b.  ->B : d_B */
+/* 2.  A->B : h(d,k,r) */
+/* 3a. A=>H : ready */
+/* 3b. B=>H : ready */
+/* 4.  H=>A : start */
+/* 5a. A=>H : r */
+/* 5b. H=>B : r */
+/* 7.  A->B : k */
+/* 8a. B=>H : ok */
+/* 8b. H=>A : ok */
 
 
 Alice1 =in(CA1,XA1).out(CA1,h(XA1,k1,r1)).(out(OAH1,ready)
