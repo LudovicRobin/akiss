@@ -1,5 +1,10 @@
 /*
    Manual authentication 5 
+
+Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
+Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
+start session 2 at any moment.
+Result: no attack has been found
 */
 
 symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
@@ -7,7 +12,7 @@ symbols ready/0, start/0, accept/0, sh/2, hash/1, bf/2;
 private k1,k2;
 channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
-var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,YA1,YA2,YA3,YB1,YB2,YB3,YB4,YB5,YH1,YH2,YH3,YH4;
+var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,YA1,YA2,YA3,YB1,YB2,YB3,YB4,YB5,YH1,YH2,YH3,YH4,XA21,XA22,XA23,XB21,XB22,XB23,XB24,XB25,XH21,XH22,XH23,XH24,YA21,YA22,YA23,YB21,YB22,YB23,YB24,YB25,YH21,YH22,YH23,YH24;
 
 rewrite sh(bf(Y, sh(X1,Y1)),Y) -> sh(X1,Y1);
 rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
@@ -18,11 +23,12 @@ rewrite sh(X,bf(X, sh(X1,Y1))) -> sh(X1,Y1);
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
 /* 4.  H=>A : start */
-/* 5.  A->B  : k */
+/* 5.  A->B : k */
 /* 6a. A=>H : short(d,k) */
 /* 6b. B=>H : short(d,k) */
-/* 7.  H=>A : accept */
-/* 7.  H=>B : accept */
+/* 7a. H=>A : accept */
+/* 7b. H=>B : accept */
+
 
 Alice1 = in(CA,XA1).
         out(CA,hash(k1)).
@@ -51,30 +57,30 @@ H1     = (in(OAH,XH1).[XH1=ready] ||
         (out(OHA,accept) || out(OHB,accept))
         );
 
-Alice2 = in(CA,XA1).
+Alice2 = in(CA,XA21).
         out(CA,hash(k2)).
         (out(OAH,ready) ||
-        in(OHA,XA2).[XA2=start].
-        begin(XA1).
+        in(OHA,XA22).[XA22=start].
+        begin(XA21).
         out(CA,k2).
-        (out(OAH,sh(XA1,k2)) || out(CA,sh(XA1,k2)).
-        in(OHA,XA3).[XA3=accept]
+        (out(OAH,sh(XA21,k2)) || out(CA,sh(XA21,k2)).
+        in(OHA,XA23).[XA23=accept]
         ));
 
-Bob2   = in(CB,YB1).
-        in(CB,YB2).
+Bob2   = in(CB,YB21).
+        in(CB,YB22).
         (out(OBH,ready) ||
-        in(CB,YB3).
-        [hash(YB3)=YB2].
-        (out(OBH,sh(YB1,YB3)) || out(CB,sh(YB1,YB3)).
-        in(OHB,YB4).[YB4=accept].end(YB1)
+        in(CB,YB23).
+        [hash(YB23)=YB22].
+        (out(OBH,sh(YB21,YB23)) || out(CB,sh(YB21,YB23)).
+        in(OHB,YB24).[YB24=accept].end(YB21)
         ));
 
-H2     = (in(OAH,YH1).[YH1=ready] ||
-        in(OBH,YH2).[YH2=ready]) ::
+H2     = (in(OAH,YH21).[YH21=ready] ||
+        in(OBH,YH22).[YH22=ready]) ::
         (out(OHA,start) ||
-        (in(OAH,YH3) || in(OBH,YH4)) ::
-        [YH3=YH4].
+        (in(OAH,YH23) || in(OBH,YH24)) ::
+        [YH23=YH24].
         (out(OHA,accept) || out(OHB,accept))
         );
 

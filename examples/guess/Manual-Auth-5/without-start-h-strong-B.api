@@ -1,5 +1,9 @@
 /*
    Manual authentication 5 
+
+Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
+Scenario: 1 session of each role.
+Result: No attack has been found.
 */
 
 symbols ready/0, accept/0, hs/2, hash/1, bf/2;
@@ -14,11 +18,12 @@ var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4;
 /* 2.  A->B : hash(k) */
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
-/* 4.  A->B  : k */
-/* 5a. A=>H : hsort(d,k) */
-/* 5b. B=>H : hsort(d,k) */
-/* 6.  H=>A : accept */
-/* 6.  H=>B : accept */
+/* 4.  A->B : k */
+/* 5a. A=>H : hs(d,k) */
+/* 5b. B=>H : hs(d,k) */
+/* 6a. H=>A : accept */
+/* 6b. H=>B : accept */
+
 
 Alice = in(CA,XA1).
         out(CA,hash(k)).
