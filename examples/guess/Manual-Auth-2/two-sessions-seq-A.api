@@ -3,7 +3,7 @@
 
 Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
 start session 2 at any moment.
-Result: An attack has been found ??
+Result: No attack has been found
 */
 
 symbols sh/2, bruteforce/2, ok/0, pair/2, fst/1, snd/1, ready/0, start/0;
@@ -19,17 +19,16 @@ rewrite sh(X,bruteforce(X, sh(X1,Y1))) -> sh(X1,Y1);
 rewrite fst(pair(X,Y)) -> X;
 rewrite snd(pair(X,Y)) -> Y;
 
-/* 1.  ->A  : dA */
-/* 2.  ->B  : dB */
-/* 2. A=>H  : READY */
-/* 3. B=>H  : READY */
-/* 5. H=>A  : START */
-/* 6. A->B  : k */
-/* 7. A=>H  : k, short(k,dA) */
-/* 8. B=>H  : k, short(k,dB) */
-/* 9. H checks equality between the two previous messages */
-/* 10.H=>A : ok */
-/* 11.H=>B : ok */
+/* 1a.  ->A  : dA */
+/* 1b.  ->B  : dB */
+/* 2a. A=>H  : ready */
+/* 2b. B=>H  : ready */
+/* 3.  H=>A  : start */
+/* 4.  A->B  : k */
+/* 5a. A=>H  : k, short(k,dA) */
+/* 5b. B=>H  : k, short(k,dB) */
+/* 6a. H=>A : ok */
+/* 6b. H=>B : ok */
 
 
 Alice1 = in(CA1,XA1).(out(OAH1,ready)
