@@ -1,5 +1,9 @@
 /*
    Manual authentication 8a
+
+Security property: Authentication for B
+Scenario: 1 session of each role, key kA is weak.
+Result: An attack has been found.
 */
 
 symbols IA/0,IB/0,ready/0, start/0, accept/0, hash/4;
@@ -10,21 +14,22 @@ channels CA,CB,CH;
 privchannels OAH,OBH,OHA,OHB;
 var X,Y,X1,Y1,XA1,XA2,XA3,XA4,XA5,XA6,XB1,XB2,XB3,XB4,XB5,XH0,XH1,XH2,XH3,XH4;
 
-/* 1a.  ->A : dA */
-/* 1b.  ->B : dB */
-/* 2.  A=>H : ready */
-/* 2.  B=>H : ready */
-/* 2.  A=>H : r */
-/* 2.  H=>B : r */
-/* 2.  H=>A : start */
-/* 2a. A->B : hash(dA,kA,r) */
-/* 2b. B->A : hash(dB,kB,r) */
-/* 3.  A->B : kA */
-/* 4.  B->A : kB */
-/* 5a. B=>H : accept */
-/* 5b. A=>H : accept */
-/* 6a. H=>A : accept */
-/* 6b. H=>B : accept */
+/* 1a.   ->A : dA */
+/* 1b.   ->B : dB */
+/* 2a.  A=>H : ready */
+/* 2b.  B=>H : ready */
+/* 3a.  A=>H : r */
+/* 3b.  H=>B : r */
+/* 4.   H=>A : start */
+/* 5a.  A->B : hash(A,dA,kA,r) */
+/* 5b.  B->A : hash(B,dB,kB,r) */
+/* 6a.  A->B : kA */
+/* 6b.  B->A : kB */
+/* 7a.  B=>H : accept */
+/* 7b.  A=>H : accept */
+/* 8a.  H=>A : accept */
+/* 8b.  H=>B : accept */
+
 
 Alice = in(CA,XA1).
         (out(OAH,ready) ||
