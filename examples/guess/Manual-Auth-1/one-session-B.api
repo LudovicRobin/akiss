@@ -1,5 +1,9 @@
 /*
    Manual authentication 1 
+
+Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
+Scenario: 1 session of each role.
+Result: No attack has been found.
 */
 
 symbols ready/0, start/0, accept/0, sh/2, bf/2, pair/2, fst/1, snd/1;
@@ -19,7 +23,11 @@ rewrite snd(pair(X,Y)) -> Y;
 /* 2a. A=>H : ready */
 /* 2b. B=>H : ready */
 /* 3.  H=>A : start */
-/* 4.  A=>B : (k,sh(k,d_A)) */
+/* 4a. A=>H : (k,sh(k,d_A)) */
+/* 4b. H=>B : (k,sh(k,d_A)) */
+/* 5a. B=>H : accept */
+/* 5b. H=>A : accept */
+
 
 Alice = in(CA,XA1).(out(OAH,ready) ||
         in(OHA,XA2).[XA2=start].
