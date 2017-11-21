@@ -1,5 +1,10 @@
 /*
    Manual authentication 6 
+
+Security property: When B ends his session with d=XB1 then A has almost finished (she has received start) his session with XA1=XB1.
+Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
+start session 2 at any moment.
+Result: no attack has been found
 */
 
 symbols ready/0, start/0, accept/0, hash/3;
@@ -16,12 +21,13 @@ var X,Y,X1,Y1,XA1,XA2,XA3,XB1,XB2,XB3,XB4,XB5,XH1,XH2,XH3,XH4,YA1,YA2,YA3,YB1,YB
 /* 3a. A=>H : ready */
 /* 3b. B=>H : ready */
 /* 4.  H=>A : start */
-/* 5.  A->B  : k */
-/* 6.  A->B  : R */
+/* 5.  A->B : k */
+/* 6.  A->B : r */
 /* 7a. A=>H : r */
 /* 7b. B=>H : r */
 /* 8a. H=>A : accept */
 /* 8b. H=>B : accept */
+
 
 Alice1 = in(CA,XA1).
         out(CA,hash(XA1,k1,r1)).
