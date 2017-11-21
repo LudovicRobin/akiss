@@ -5,7 +5,7 @@
 Security property:  When A ends her session with d=XA1 then B has almost finished his session with XB1=XA1.
 Scenario:  2 sessions "in sequence" of each role. Note that we rely on our phase operator >> that allows one to abort session 1 and
 start session 2 at any moment.
-Result: An attack has been found 
+Result: No attack has been found 
 */
 
 symbols h/3, ok/0, ready/0, start/0;
@@ -18,14 +18,14 @@ var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4,YA1, YA2, YA3, YB
 
 
 /* 1. A->B  : d, h(d,k,r) */
-/* 2. A=>H  : READY */
-/* 3. B=>H  : READY */
-/* 4. H=>A  : START */
+/* 2. A=>H  : ready */
+/* 3. B=>H  : ready */
+/* 4. H=>A  : start */
 /* 5. A=>H  : r */
 /* 6. H=>B  : r */
 /* 7. A->B  : k */
-/* 8. B=>H  : OK */
-/* 9. H=>A  : OK */
+/* 8. B=>H  : ok */
+/* 9. H=>A  : ok */
 
 
 Alice1 =in(CA1,XA1).out(CA1,h(XA1,k1,r1)).(out(OAH1,ready)

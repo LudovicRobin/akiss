@@ -15,14 +15,14 @@ var X,Y, XA1, XA2, XA3, XB1, XB2, XB3, XB4, XH1, XH2, XH3, XH4;
 
 
 /* 1. A->B  : d, h(d,k,r) */
-/* 2. A=>H  : READY */
-/* 3. B=>H  : READY */
-/* 4. H=>A  : START */
+/* 2. A=>H  : ready */
+/* 3. B=>H  : ready */
+/* 4. H=>A  : start */
 /* 5. A=>H  : r */
 /* 6. H=>B  : r */
 /* 7. A->B  : k */
-/* 8. B=>H  : OK */
-/* 9. H=>A  : OK */
+/* 8. B=>H  : ok */
+/* 9. H=>A  : ok */
 
 
 Alice = in(CA,XA1).out(CA,h(XA1,k,r)).(out(OAH1,ready)
